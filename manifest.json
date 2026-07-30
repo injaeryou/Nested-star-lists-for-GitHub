@@ -34,9 +34,15 @@
         "https://github.com/*"
       ],
       "js": [
-        "content.js"
+        "src/core.js",
+        "src/settings.js",
+        "src/rail.js",
+        "src/boot.js"
       ],
-      "run_at": "document_start"
+      "run_at": "document_start",
+      "css": [
+        "styles.css"
+      ]
     }
   ]
 }

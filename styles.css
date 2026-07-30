@@ -1,0 +1,278 @@
+/* Injected by the manifest, so the tree is styled before the first row lands. */
+details[data-nested-star-list-parent] > summary {
+  display: flex; align-items: center; list-style: none; padding: 0;
+  cursor: pointer;
+}
+details[data-nested-star-list-parent] > summary::-webkit-details-marker { display: none; }
+details[data-nested-star-list-parent] > summary > * { flex: 1; }
+
+/* The caret is a real element, not a ::before, so it can own its own hover
+   area: hovering the toggle highlights the toggle, hovering the row
+   highlights the row. */
+.nestedStarList-caret {
+  flex: none !important; width: 24px; align-self: stretch; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.nestedStarList-caret svg { width: 14px; height: 14px; fill: currentColor; opacity: .7; }
+.nestedStarList-caret:hover svg { opacity: 1; }
+.nestedStarList-caret .nestedStarList-open { display: none; }
+details[data-nested-star-list-parent][open] > summary > .nestedStarList-caret .nestedStarList-open {
+  display: block;
+}
+details[data-nested-star-list-parent][open] > summary > .nestedStarList-caret .nestedStarList-closed {
+  display: none;
+}
+.nestedStarList-caret:hover,
+.nestedStarList-label:hover { background: var(--bgColor-neutral-muted, #6e768118); }
+/* A folder with no list of its own is a label, not a destination: muted, lighter,
+   and its icon steps back. */
+details[data-nested-star-list-virtual] > summary .nestedStarList-label {
+  color: var(--fgColor-muted, #59636e); font-weight: 400;
+}
+details[data-nested-star-list-virtual] > summary > .nestedStarList-caret svg { opacity: .45; }
+
+/* A folder with no list of its own still gets a full row to click on — the
+   same 16px type as a list row, a little less air since it only holds a name. */
+.nestedStarList-label { padding: 20px 16px; font-size: 16px; }
+.nestedStarList-badge { margin-left: 6px; }
+
+/* The tree already shows where a list sits, so the full path is opt-in. */
+.nestedStarList-path { display: none; }
+:root[data-nsl-paths="on"] .nestedStarList-path { display: inline; }
+
+/* 28px indent step + 24px caret slot + the 16px a row pads itself with; a
+   folder row gets the last 16px from its own header, so both end up equal. */
+details[data-nested-star-list-parent] > a,
+details[data-nested-star-list-parent] > li { padding-left: 68px; }
+details[data-nested-star-list-parent] > details { padding-left: 28px; }
+
+/* GitHub draws a divider on every Box-row but the first. Once rows are nested,
+   "first" is meaningless and the leftovers read as stray lines — inside a group
+   the tree guides carry the structure instead. */
+details[data-nested-star-list-parent] .Box-row { border-top: 0; }
+
+/* One rule between every pair of top-level entries — folders and loose lists
+   alike — while the rows inside a group stay divider-free. */
+#profile-lists-container .Box
+  > :is(details[data-nested-star-list-parent], a[href*="/lists/"])
+  ~ :is(details[data-nested-star-list-parent], a[href*="/lists/"]) {
+  border-top: 1px solid var(--borderColor-muted, #30363d);
+}
+
+/* Folder-tree guides: a stem down the group, an elbow into each child. They sit
+   above the rows' backgrounds (z-index) so a hover or current-row highlight can
+   never cut the line. */
+details[data-nested-star-list-parent] > :not(summary) { position: relative; }
+details[data-nested-star-list-parent] > :not(summary)::before {
+  /* 12px = the centre of the parent's folder icon, so the stem hangs off it. */
+  content: ''; position: absolute; left: 12px; top: 0; bottom: 0; z-index: 1;
+  border-left: 1px solid var(--borderColor-muted, #30363d);
+}
+details[data-nested-star-list-parent] > :not(summary):last-child::before { bottom: 50%; }
+details[data-nested-star-list-parent] > :not(summary)::after {
+  content: ''; position: absolute; left: 12px; top: 50%; width: 18px; z-index: 1;
+  border-top: 1px solid var(--borderColor-muted, #30363d);
+}
+/* A folder child is as tall as its whole subtree, so hanging its connector off
+   the box middle points at the wrong row. Draw it on its own header instead. */
+details[data-nested-star-list-parent] > details::after,
+details[data-nested-star-list-parent] > details:last-child::before { content: none; }
+details[data-nested-star-list-parent] > details > summary { position: relative; }
+details[data-nested-star-list-parent] > details > summary::after {
+  content: ''; position: absolute; left: -16px; top: 50%; width: 16px; z-index: 1;
+  border-top: 1px solid var(--borderColor-muted, #30363d);
+}
+details[data-nested-star-list-parent] > details:last-child > summary::before {
+  content: ''; position: absolute; left: -16px; top: 0; height: 50%; z-index: 1;
+  border-left: 1px solid var(--borderColor-muted, #30363d);
+}
+
+/* Repositories left, lists right, pinned so they stay reachable while the
+   repositories scroll. */
+.nestedStarList-wrap { display: flex; gap: 16px; align-items: flex-start; }
+.nestedStarList-main { flex: 1; min-width: 0; }
+#nested-children {
+  flex: none; width: 320px; align-self: start;
+  position: sticky; top: 16px;
+  max-height: calc(100vh - 32px);
+  /* Names already ellipsis, so nothing needs a horizontal scrollbar. */
+  overflow: hidden auto;
+  container-type: inline-size;
+}
+@media (max-width: 1011px) {
+  .nestedStarList-wrap { flex-direction: column; }
+  #nested-children { width: 100%; position: static; }
+}
+.nestedStarList-current {
+  background: var(--bgColor-accent-muted, #388bfd1a);
+  box-shadow: inset 2px 0 0 var(--fgColor-accent, #4493f8);
+}
+/* --- the rail: one line per list, styled like GitHub's file explorer ---- */
+#nested-children [hidden] { display: none !important; }
+#nested-children details[data-nested-star-list-parent] { border-top: 0; }
+#nested-children .Box-header {
+  position: sticky; top: 0; z-index: 1; padding: 9px 10px;
+  background: var(--bgColor-muted, #f6f8fa);
+  display: flex; align-items: center; gap: 8px;
+}
+/* Look like a field, not a label: GitHub's own input treatment, with the search
+   glyph inside so the box reads as somewhere you can type. */
+#nested-children .nestedStarList-filter {
+  flex: 1; min-width: 0; height: 28px; padding: 0 8px 0 28px;
+  border: 1px solid var(--borderColor-default, #3d444d); border-radius: 6px;
+  background: var(--bgColor-inset, #f6f8fa) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%236e7681'%3E%3Cpath d='M10.68 11.74a6 6 0 0 1-7.922-8.982 6 6 0 0 1 8.982 7.922l3.04 3.04a.749.749 0 0 1-.53 1.28.749.749 0 0 1-.53-.22ZM11.5 7a4.499 4.499 0 1 0-8.997 0A4.499 4.499 0 0 0 11.5 7Z'/%3E%3C/svg%3E") no-repeat 8px center;
+  background-size: 14px 14px;
+  font-size: 12px; color: var(--fgColor-default, #1f2328); outline: 0;
+}
+#nested-children .nestedStarList-filter::placeholder { color: var(--fgColor-muted, #59636e); }
+#nested-children .nestedStarList-filter:focus {
+  border-color: var(--fgColor-accent, #4493f8);
+  box-shadow: inset 0 0 0 1px var(--fgColor-accent, #4493f8);
+}
+#nested-children .nestedStarList-filter::-webkit-search-cancel-button { cursor: pointer; }
+/* The same guides as the wide page, tuned to the rail's 16px indent: the stem
+   still lands on the parent's folder icon, the elbows are just shorter. Rows
+   carry a 4px horizontal margin that folders do not, so their guides shift 4px
+   left to land on the same column — otherwise the stem breaks at every folder. */
+#nested-children details[data-nested-star-list-parent] > :not(summary)::after { width: 12px; }
+#nested-children details[data-nested-star-list-parent] > a::before,
+#nested-children details[data-nested-star-list-parent] > a::after { left: 8px; }
+#nested-children details[data-nested-star-list-parent] > details > summary::after,
+#nested-children details[data-nested-star-list-parent] > details:last-child > summary::before {
+  left: -4px;
+}
+#nested-children details[data-nested-star-list-parent] > details > summary::after { width: 8px; }
+/* Inside a summary the row loses its horizontal margin, so promoted folder
+   names sit on the same column as virtual folder labels. */
+#nested-children summary .nestedStarList-row { margin: 0 4px 0 0; }
+
+/* Folders read as structure, lists as destinations. */
+#nested-children details[data-nested-star-list-parent] > :not(summary) { border-top: 0; }
+#nested-children summary .nestedStarList-name,
+#nested-children .nestedStarList-label { font-weight: 600; }
+#nested-children details[data-nested-star-list-virtual] .nestedStarList-label { font-weight: 400; }
+#nested-children .nestedStarList-label { cursor: default; }
+#nested-children .nestedStarList-row .nestedStarList-name { color: var(--fgColor-muted, #59636e); }
+#nested-children .nestedStarList-row:hover .nestedStarList-name,
+#nested-children summary .nestedStarList-row .nestedStarList-name { color: var(--fgColor-default, #1f2328); }
+#nested-children .nestedStarList-current .nestedStarList-name {
+  color: var(--fgColor-accent, #0969da); font-weight: 600;
+}
+#nested-children .nestedStarList-row {
+  display: flex; align-items: center; gap: 8px;
+  /* No vertical margin: a gap between rows would break the tree stem. */
+  margin: 0 4px; padding: 3px 8px; border-radius: 6px;
+  font-size: 12px; line-height: 20px; border: 0;
+  color: var(--fgColor-default, #1f2328); text-decoration: none;
+}
+#nested-children .nestedStarList-row:hover { background: var(--bgColor-neutral-muted, #6e768118); }
+/* Shrink-only, so the child-count badge sits against the name instead of
+   being pushed to the far edge; the repo count keeps the right edge. */
+#nested-children .nestedStarList-name {
+  flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+#nested-children .nestedStarList-num {
+  flex: none; margin-left: auto; font-size: 11px; font-variant-numeric: tabular-nums;
+  color: var(--fgColor-muted, #59636e);
+}
+/* A repo glyph in front of the count, so the bare number explains itself. */
+#nested-children .nestedStarList-num:not(:empty)::before {
+  content: ''; display: inline-block; width: 12px; height: 12px;
+  margin-right: 3px; vertical-align: -1.5px; opacity: .75;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%236e7681'%3E%3Cpath d='M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v3.25a.25.25 0 0 1-.4.2l-1.45-1.087a.249.249 0 0 0-.3 0L5.4 15.7a.25.25 0 0 1-.4-.2Z'/%3E%3C/svg%3E") no-repeat center / 12px 12px;
+}
+/* The tree already shows the path, and the row title carries the full name. */
+#nested-children .color-fg-muted { display: none; }
+#nested-children .nestedStarList-badge { margin-left: 0; }   /* the flex gap is enough */
+#nested-children .nestedStarList-label { padding: 3px 8px; font-size: 12px; }
+/* A little air around the folder glyph: it is the only icon in the rail. */
+#nested-children .nestedStarList-caret { width: 20px; margin-left: 2px; border-radius: 4px; }
+#nested-children .nestedStarList-row, #nested-children .nestedStarList-label { gap: 10px; }
+/* Tighter indent than the full-width page: 16px a level. */
+#nested-children > .nestedStarList-row { padding-left: 24px; }
+#nested-children details[data-nested-star-list-parent] > a { padding-left: 40px; }
+#nested-children details[data-nested-star-list-parent] > details { padding-left: 16px; }
+:root { --nsl-list-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%236e7681'%3E%3Cpath d='M5.75 2.5h8.5a.75.75 0 0 1 0 1.5h-8.5a.75.75 0 0 1 0-1.5Zm0 5h8.5a.75.75 0 0 1 0 1.5h-8.5a.75.75 0 0 1 0-1.5Zm0 5h8.5a.75.75 0 0 1 0 1.5h-8.5a.75.75 0 0 1 0-1.5ZM2 14a1 1 0 1 1 0-2 1 1 0 0 1 0 2Zm1-6a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM2 4a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z'/%3E%3C/svg%3E"); }
+
+/* Every list row gets the list glyph — loose ones aligned with the folder
+   icons, nested ones in the slot their folder siblings spend on the caret. */
+#profile-lists-container .Box > a[href*="/lists/"] {
+  position: relative; padding-left: 40px;   /* name lands where folder names do */
+}
+#profile-lists-container .Box > a[href*="/lists/"]::before,
+#nested-children > .nestedStarList-row::before {
+  content: ''; position: absolute; top: 50%; transform: translateY(-50%);
+  width: 16px; height: 16px; opacity: .7;
+  background: var(--nsl-list-icon) no-repeat center / 14px 14px;
+}
+#profile-lists-container .Box > a[href*="/lists/"]::before { left: 5px; }
+#nested-children > .nestedStarList-row { position: relative; padding-left: 26px; }
+/* The row carries a 4px horizontal margin folders lack (plus the box border),
+   so the glyph backs up 5px to land in the folder-icon column. */
+#nested-children > .nestedStarList-row::before { left: 1px; width: 14px; height: 14px; }
+
+/* Fold / unfold everything: in the rail next to the filter, on the profile page
+   labelled beside the "Lists (N)" heading. */
+.nestedStarList-heading { display: flex; align-items: center; gap: 10px; }
+/* The rail's total, muted next to the pill; gone while a filter counts matches. */
+#nested-children .nestedStarList-alltotal { font-size: 12px; color: var(--fgColor-muted, #59636e); }
+#nested-children .nestedStarList-alltotal:empty { display: none; }
+.nestedStarList-controls { display: inline-flex; gap: 4px; }
+/* The fallback spot, when no heading was found: a slim row atop the box. */
+.Box > .nestedStarList-controls { display: flex; justify-content: flex-end; padding: 6px 10px; }
+.nestedStarList-foldall { display: inline-flex; align-items: center; gap: 5px; }
+.nestedStarList-foldall span { font-size: 12px; font-weight: 400; }
+.nestedStarList-foldall {
+  flex: none; border: 0; background: none; padding: 4px; border-radius: 4px;
+  cursor: pointer; color: var(--fgColor-muted, #59636e);
+}
+.nestedStarList-foldall:hover {
+  background: var(--bgColor-neutral-muted, #6e768118);
+  color: var(--fgColor-default, #1f2328);
+}
+.nestedStarList-foldall svg { display: block; width: 14px; height: 14px; fill: currentColor; }
+
+/* Nested list rows: the glyph sits in the slot a folder sibling spends on its
+   caret, so names at one depth stay on one column. Positioned off the row. */
+details[data-nested-star-list-parent] > a.Box-row h3::before,
+#nested-children details[data-nested-star-list-parent] > a .nestedStarList-name::before {
+  content: ''; position: absolute; top: 50%; transform: translateY(-50%);
+  width: 16px; height: 16px; opacity: .7;
+  background: var(--nsl-list-icon) no-repeat center / 14px 14px;
+}
+details[data-nested-star-list-parent] > a.Box-row h3::before { left: 34px; }
+#nested-children details[data-nested-star-list-parent] > a .nestedStarList-name::before {
+  left: 23px; width: 14px; height: 14px;
+}
+
+/* Truncation, like GitHub's own lists box. */
+/* Doubled class on purpose: Primer's .d-block is `display: block !important`,
+   and Chrome injects this sheet before GitHub's — a specificity tie loses
+   there. Two classes outrank the utility no matter the load order. */
+.nestedStarList-cut.nestedStarList-cut { display: none !important; }
+/* GitHub's own "Show all lists…" row, once the tree makes it redundant. */
+.nestedStarList-hide.nestedStarList-hide { display: none !important; }
+.nestedStarList-more {
+  display: block; width: 100%; padding: 10px 16px; border: 0;
+  background: none; cursor: pointer; font-size: 12px; text-align: center;
+  color: var(--fgColor-accent, #0969da);
+  border-top: 1px solid var(--borderColor-muted, #30363d);
+}
+.nestedStarList-more:hover { text-decoration: underline; }
+/* The rail's rows are half the height of the page's — its fold row follows. */
+#nested-children .nestedStarList-more { padding: 6px 12px; }
+
+/* Credit line: one 11px row, pinned to the bottom of the rail. */
+#nested-children .nestedStarList-foot {
+  position: sticky; bottom: 0; z-index: 1;
+  padding: 5px 10px; font-size: 11px; line-height: 16px;
+  border-top: 1px solid var(--borderColor-muted, #d1d9e0);
+  background: var(--bgColor-muted, #f6f8fa);
+}
+#nested-children .nestedStarList-foot a {
+  color: var(--fgColor-muted, #59636e); text-decoration: none;
+}
+#nested-children .nestedStarList-foot a:hover {
+  color: var(--fgColor-accent, #0969da); text-decoration: underline;
+}
+@container (max-width: 230px) { #nested-children .nestedStarList-num { display: none; } }
