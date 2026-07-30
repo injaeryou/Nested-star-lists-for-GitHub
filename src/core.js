@@ -119,13 +119,23 @@
     (c.matches('a, li') &&
       (c.getAttribute('href')?.includes('/lists/') || c.querySelector('a[href*="/lists/"]'))));
 
+  // GitHub's own Sort dropdown navigates with these query params. Name
+  // descending is the one order the tree can honour without dates, so it does;
+  // the date sorts fall back to name ascending like everything else.
+  const sortDir = () => {
+    const q = new URLSearchParams(location.search);
+    return q.get('user_lists_direction') === 'desc' &&
+      (q.get('user_lists_sort') || 'name') === 'name' ? -1 : 1;
+  };
+
   const sortTree = el => {
     // The marker guarantees non-tree children keep their place: the sorted block
     // is put back exactly where its first row was.
+    const dir = sortDir();
     const kids = treeKids(el);
     const wanted = [...kids].sort((x, y) =>
       (foldersFirst ? (y.tagName === 'DETAILS') - (x.tagName === 'DETAILS') : 0) ||
-      sortKey(x).toLowerCase().localeCompare(sortKey(y).toLowerCase()));
+      dir * sortKey(x).toLowerCase().localeCompare(sortKey(y).toLowerCase()));
     // Only touch the DOM when the order actually changes, or the observer that
     // calls us would fire on our own writes forever.
     if (wanted.some((k, i) => k !== kids[i])) {

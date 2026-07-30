@@ -463,6 +463,20 @@ setTimeout(() => {
   check('a late collapsed default keeps the current path open', curPathOpen);
   api.setDefaultOpen(true);
 
+  // GitHub's Sort dropdown: Name descending flips the tree, date sorts do not.
+  const topNames = () => api.treeKids(box)
+    .map(k => k.tagName === 'DETAILS' ? k.dataset.nestedStarListParent
+            : k.querySelector('h3')?.textContent.trim())
+    .join(',');
+  history.replaceState(null, '', '?user_lists_sort=name&user_lists_direction=desc');
+  api.nest(box);
+  check('name-descending sort flips the top level', topNames() === 'zz,toys,Infra:k8s,Infra,AI');
+  history.replaceState(null, '', '?user_lists_sort=updated_at&user_lists_direction=desc');
+  api.nest(box);
+  check('date sorts keep name order', topNames() === 'AI,Infra,Infra:k8s,toys,zz');
+  history.replaceState(null, '', location.pathname);
+  api.nest(box);
+
   // A revalidation remount replaces the whole rail box; what the reader did —
   // expanding the truncation — must carry over. (Run last: it swaps sideBox.)
   const railData = [
