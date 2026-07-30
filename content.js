@@ -1,6 +1,9 @@
 (() => {
   const SEP = /[/:]/;              // list name: "AI/RAG" or "AI:RAG"
   const MARK = 'nestedStarList';
+  const APP_NAME = 'Nested star lists for GitHub';
+  const REPO_URL = 'https://github.com/injaeryou/nested-star-lists-for-github';
+  const LIST_HREF = /^\/stars\/[^/]+\/lists\/[^/]+$/;
 
   // First non-blank text node inside a list link = the list name. GitHub keeps
   // the name and the "N repositories" count in separate nodes, so edit the node
@@ -102,8 +105,97 @@
       content: ''; position: absolute; left: 30px; top: 50%; width: 30px;
       border-top: 1px solid var(--borderColor-muted, #30363d);
     }
-    details[data-nested-star-list-parent] > details::after { width: 8px; }`;
+    details[data-nested-star-list-parent] > details::after { width: 8px; }
 
+    /* Repositories left, lists right, pinned so they stay reachable while the
+       repositories scroll. */
+    .${MARK}-wrap { display: flex; gap: 16px; align-items: flex-start; }
+    .${MARK}-main { flex: 1; min-width: 0; }
+    #nested-children {
+      flex: none; width: 320px; align-self: start;
+      position: sticky; top: 16px;
+      max-height: calc(100vh - 32px);
+      /* Names already ellipsis, so nothing needs a horizontal scrollbar. */
+      overflow: hidden auto;
+      container-type: inline-size;
+    }
+    @media (max-width: 1011px) {
+      .${MARK}-wrap { flex-direction: column; }
+      #nested-children { width: 100%; position: static; }
+    }
+    .${MARK}-current {
+      background: var(--bgColor-accent-muted, #388bfd1a);
+      box-shadow: inset 2px 0 0 var(--fgColor-accent, #4493f8);
+    }
+    /* --- the rail: one line per list, styled like GitHub's file explorer ---- */
+    #nested-children [hidden] { display: none !important; }
+    #nested-children .Box-header {
+      position: sticky; top: 0; z-index: 1; padding: 9px 10px;
+      background: var(--bgColor-muted, #f6f8fa);
+      display: flex; align-items: center; gap: 8px;
+    }
+    #nested-children .${MARK}-filter {
+      flex: 1; min-width: 0; border: 0; background: transparent; outline: 0;
+      font-size: 12px; line-height: 22px; padding: 1px 4px;
+      color: var(--fgColor-default, #1f2328);
+    }
+    #nested-children .${MARK}-filter::placeholder { color: var(--fgColor-muted, #59636e); }
+    /* Depth is carried by indentation and weight; connector lines at 12px are
+       noise, so the rail drops the ones the full-width page uses. */
+    #nested-children details[data-nested-star-list-parent] > :not(summary)::before,
+    #nested-children details[data-nested-star-list-parent] > :not(summary)::after {
+      content: none;
+    }
+    /* Folders read as structure, lists as destinations. */
+    #nested-children details[data-nested-star-list-parent] > summary { font-weight: 600; }
+    #nested-children .${MARK}-label { cursor: default; }
+    #nested-children .${MARK}-row .${MARK}-name { color: var(--fgColor-muted, #59636e); }
+    #nested-children .${MARK}-row:hover .${MARK}-name,
+    #nested-children summary .${MARK}-row .${MARK}-name { color: var(--fgColor-default, #1f2328); }
+    #nested-children .${MARK}-current .${MARK}-name {
+      color: var(--fgColor-accent, #0969da); font-weight: 600;
+    }
+    #nested-children .${MARK}-row {
+      display: flex; align-items: center; gap: 8px;
+      margin: 1px 4px; padding: 3px 8px; border-radius: 6px;
+      font-size: 12px; line-height: 20px; border: 0;
+      color: var(--fgColor-default, #1f2328); text-decoration: none;
+    }
+    #nested-children .${MARK}-row:hover { background: var(--bgColor-neutral-muted, #6e768118); }
+    /* Shrink-only, so the child-count badge sits against the name instead of
+       being pushed to the far edge; the repo count keeps the right edge. */
+    #nested-children .${MARK}-name {
+      flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    #nested-children .${MARK}-num {
+      flex: none; margin-left: auto; font-size: 11px; font-variant-numeric: tabular-nums;
+      color: var(--fgColor-muted, #59636e);
+    }
+    /* The tree already shows the path, and the row title carries the full name. */
+    #nested-children .color-fg-muted { display: none; }
+    #nested-children .${MARK}-badge { margin-left: 0; }   /* the flex gap is enough */
+    #nested-children .${MARK}-label { padding: 3px 8px; font-size: 12px; }
+    /* A little air around the folder glyph: it is the only icon in the rail. */
+    #nested-children .${MARK}-caret { width: 20px; margin-left: 2px; border-radius: 4px; }
+    #nested-children .${MARK}-row, #nested-children .${MARK}-label { gap: 10px; }
+    /* Tighter indent than the full-width page: 16px a level. */
+    #nested-children > .${MARK}-row { padding-left: 24px; }
+    #nested-children details[data-nested-star-list-parent] > a { padding-left: 40px; }
+    #nested-children details[data-nested-star-list-parent] > details { padding-left: 16px; }
+    /* Credit line: one 11px row, pinned to the bottom of the rail. */
+    #nested-children .${MARK}-foot {
+      position: sticky; bottom: 0; z-index: 1;
+      padding: 5px 10px; font-size: 11px; line-height: 16px;
+      border-top: 1px solid var(--borderColor-muted, #d1d9e0);
+      background: var(--bgColor-muted, #f6f8fa);
+    }
+    #nested-children .${MARK}-foot a {
+      color: var(--fgColor-muted, #59636e); text-decoration: none;
+    }
+    #nested-children .${MARK}-foot a:hover {
+      color: var(--fgColor-accent, #0969da); text-decoration: underline;
+    }
+    @container (max-width: 230px) { #nested-children .${MARK}-num { display: none; } }`;
 
   const container = () => {
     const box = document.querySelector('#profile-lists-container .Box');
@@ -232,8 +324,181 @@
     root.querySelectorAll('details[data-nested-star-list-parent]').forEach(countBadge);
   };
 
+  // --- the same tree, on a single list's page ------------------------------
+
+  // Pure part, so it is testable without network or navigation: every list on the
+  // index, rebuilt as one compact line each. GitHub's own list rows are page-width
+  // cards (big bold title, description, "N repositories") — three of them fill a
+  // 320px rail, so the rail gets its own row: name, then the repo count.
+  const railRows = (doc, pathname) => {
+    const seen = new Set();
+    return [...doc.querySelectorAll('a[href*="/lists/"]')]
+      .filter(a => {
+        const href = a.getAttribute('href') || '';
+        return LIST_HREF.test(href) && !seen.has(href) && seen.add(href);
+      })
+      .map(a => {
+        const href = a.getAttribute('href');
+        const full = nameOf(a);
+        const repos = a.textContent.match(/(\d[\d,]*)\s+repositor/)?.[1] || '';
+        const row = document.createElement('a');
+        row.className = `${MARK}-row`;
+        row.setAttribute('href', href);
+        row.title = repos ? `${full} — ${repos} repositories` : full;
+        if (href === pathname) row.classList.add(`${MARK}-current`);
+        const nm = document.createElement('span');
+        nm.className = `${MARK}-name`;
+        nm.textContent = full;
+        const num = document.createElement('span');
+        num.className = `${MARK}-num`;
+        num.textContent = repos;
+        row.append(nm, num);
+        return row;
+      });
+  };
+
+  // The list page's repository list. Everything is mounted relative to it: it is
+  // the one stable landmark on the page.
+  const repoList = root => root.querySelector('#user-list-repositories');
+
+  // Put the box beside the whole list column, in a flex row of our own — that
+  // column is a plain block, so there is no existing column to drop into. The
+  // entire column moves left (title included) so the box starts at the title,
+  // not below it.
+  const mountBeside = (box, repos) => {
+    const col = repos.parentElement;
+    let wrap = repos.closest(`.${MARK}-wrap`);
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.className = `${MARK}-wrap`;
+      const left = document.createElement('div');
+      left.className = `${MARK}-main`;
+      while (col.firstChild) left.append(col.firstChild);
+      wrap.append(left);
+      col.append(wrap);
+    }
+    wrap.append(box);
+  };
+
+  // Typing beats scrolling in a 320px rail: hide the rows that do not match, and
+  // open every folder that still has one.
+  const filterRail = (box, query, onCount) => {
+    const q = query.trim().toLowerCase();
+    let shown = 0;
+    for (const row of box.querySelectorAll(`.${MARK}-row`)) {
+      const hit = !q || (row.title || '').toLowerCase().includes(q);
+      row.hidden = !hit;
+      if (hit) shown++;
+    }
+    // Deepest first, so a folder sees its children's final state.
+    for (const d of [...box.querySelectorAll('details')].reverse()) {
+      d.hidden = !d.querySelector(`.${MARK}-row:not([hidden])`);
+      // A surviving folder keeps its own row on screen even when the name missed:
+      // it is the path to the match, and its summary would be an empty caret.
+      if (!d.hidden) {
+        const own = d.querySelector(`:scope > summary .${MARK}-row`);
+        if (own) own.hidden = false;
+      }
+      if (q) {
+        if (d.dataset[MARK + 'Was'] === undefined) d.dataset[MARK + 'Was'] = d.open ? '1' : '0';
+        d.open = true;
+      } else if (d.dataset[MARK + 'Was'] !== undefined) {
+        d.open = d.dataset[MARK + 'Was'] === '1';
+        delete d.dataset[MARK + 'Was'];
+      }
+    }
+    onCount(shown);
+  };
+
+  // Which folders the user left closed, so the rail looks the same next page.
+  const closedKey = user => `${MARK}:closed:${user}`;
+  const readClosed = user => {
+    try { return new Set(JSON.parse(localStorage.getItem(closedKey(user)) || '[]')); }
+    catch { return new Set(); }
+  };
+  const rememberClosed = (box, user) => {
+    const closed = [...box.querySelectorAll('details[data-nested-star-list-parent]')]
+      .filter(d => !d.open && d.dataset[MARK + 'Was'] === undefined)
+      .map(d => d.dataset[MARK + 'Parent']);
+    try { localStorage.setItem(closedKey(user), JSON.stringify(closed)); } catch {}
+  };
+
+  const fetchDoc = async url => {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    return new DOMParser().parseFromString(await res.text(), 'text/html');
+  };
+
+  const showTree = async () => {
+    const m = location.pathname.match(/^\/stars\/([^/]+)\/lists\/[^/]+$/);
+    if (!m || document.getElementById('nested-children')) return;
+    // The lists index only exists on the profile stars tab — /stars/<user>/lists
+    // is not a page.
+    const doc = await fetchDoc(`/${m[1]}?tab=stars`);
+    const rows = doc ? railRows(doc, location.pathname) : [];
+    if (!rows.length) return console.debug('[nested star lists] no lists found');
+
+    const box = railBox(rows);
+    const filter = box.querySelector(`.${MARK}-filter`);
+    const total = box.querySelector('.Counter');
+
+    const main = document.querySelector('main') || document.body;
+    const repos = repoList(main);
+    if (repos) mountBeside(box, repos); else main.prepend(box);
+    nest(box);                     // same folder tree as the lists page
+
+    const closed = readClosed(m[1]);
+    for (const d of box.querySelectorAll('details[data-nested-star-list-parent]'))
+      if (closed.has(d.dataset[MARK + 'Parent'])) d.open = false;
+    box.addEventListener('toggle', () => rememberClosed(box, m[1]), true);
+
+    filter.addEventListener('input', () =>
+      filterRail(box, filter.value, n => {
+        total.textContent = String(n);
+        total.title = filter.value.trim() ? `${n} lists match` : `${n} lists`;
+      }));
+
+    // Scroll the rail (not the page) so the list you are on is in view.
+    const here = box.querySelector(`.${MARK}-current`);
+    if (here) box.scrollTop = here.offsetTop - box.clientHeight / 2;
+  };
+
+  // Reuse GitHub's own Box classes so the rail looks like the rest of the page:
+  // filter on top, lists in the middle, credit pinned at the bottom.
+  const railBox = rows => {
+    const box = document.createElement('div');
+    box.id = 'nested-children';
+    box.className = 'Box mb-3';
+    const header = document.createElement('div');
+    header.className = 'Box-header';
+    const filter = document.createElement('input');
+    filter.className = `${MARK}-filter`;
+    filter.type = 'search';
+    filter.placeholder = 'Filter lists';
+    filter.setAttribute('aria-label', 'Filter lists');
+    const total = document.createElement('span');
+    total.className = 'Counter';
+    total.textContent = String(rows.length);
+    total.title = `${rows.length} lists`;   // a bare number begs the question
+    header.append(filter, total);
+
+    const foot = document.createElement('div');
+    foot.className = `${MARK}-foot`;
+    const credit = document.createElement('a');
+    credit.href = REPO_URL;
+    credit.target = '_blank';
+    credit.rel = 'noopener noreferrer';
+    credit.textContent = APP_NAME;
+    foot.append(credit);
+
+    box.append(header, ...rows, foot);
+    return box;
+  };
+
+  let seen = '';
   const tick = () => {
     nest();
+    if (location.pathname !== seen) { seen = location.pathname; showTree(); }
   };
 
 
@@ -251,5 +516,5 @@
   else document.addEventListener('readystatechange', start, { once: true });
 
   // test hook
-  window.__nestedStarLists = { nest };
+  window.__nestedStarLists = { railRows, railBox, repoList, mountBeside, nest, filterRail };
 })();
