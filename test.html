@@ -32,6 +32,12 @@
       </div>
     </div>
   </div>
+  <!-- A list literally named "/a//" (second box, nested on demand by a test):
+       every segment but "a" is empty — the rows keep their height anyway. -->
+  <div id="emptyname" class="Box">
+    <a class="d-block Box-row" href="/stars/me/lists/x"><div><h3>x</h3><span>1 repository</span></div></a>
+    <a class="d-block Box-row" href="/stars/me/lists/-a-"><div><h3>/a//</h3><span>1 repository</span></div></a>
+  </div>
 </div>
 <!-- Decoy: a list link outside the container must be left alone. -->
 <footer><a href="/stars/other/lists/x-y"><h3>Other/decoy</h3></a></footer>
@@ -505,6 +511,18 @@ setTimeout(() => {
     m2.querySelector('.Counter').textContent === '1' &&
     m2.querySelector('.nestedStarList-alltotal').textContent === '(12)');
   m2.remove();
+
+  // A list literally named "/a//" nests into empty-named folders and an
+  // empty-named leaf; no text may not mean no height.
+  const en = document.getElementById('emptyname');
+  api.nest(en);
+  const enX = en.querySelector('a[href$="/lists/x"]');
+  const enLeaf = en.querySelector('a[href$="/lists/-a-"]');
+  check('an empty leaf name keeps the row height',
+    Math.abs(enLeaf.getBoundingClientRect().height - enX.getBoundingClientRect().height) <= 1);
+  const enLabels = [...en.querySelectorAll('.nestedStarList-label')];
+  check('an empty folder label keeps its one-line height',
+    Math.abs(enLabels[0].getBoundingClientRect().height - enLabels[1].getBoundingClientRect().height) <= 1);
 
   // Re-running must not duplicate groups or re-split already-nested names.
   box.appendChild(document.createElement('a'));

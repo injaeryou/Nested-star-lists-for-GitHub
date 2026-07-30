@@ -171,6 +171,12 @@ details[data-nested-star-list-parent] > details:last-child > summary::before {
 #nested-children .nestedStarList-name {
   flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+/* A list can literally be named "/a//": empty segments leave nameless rows and
+   labels. A zero-width space keeps the normal one-line box (and its baseline)
+   that an empty element would otherwise lose. The glyphs own ::before. */
+#profile-lists-container .Box a[href*="/lists/"] h3::after,
+#nested-children .nestedStarList-name::after,
+.nestedStarList-label::after { content: '\200B'; }
 #nested-children .nestedStarList-num {
   flex: none; margin-left: auto; font-size: 11px; font-variant-numeric: tabular-nums;
   color: var(--fgColor-muted, #59636e);
