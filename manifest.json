@@ -17,6 +17,17 @@
     "48": "icons/icon-48.png",
     "128": "icons/icon-128.png"
   },
+  "permissions": [
+    "storage"
+  ],
+  "action": {
+    "default_popup": "options.html",
+    "default_title": "Nested star lists for GitHub"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": false
+  },
   "content_scripts": [
     {
       "matches": [

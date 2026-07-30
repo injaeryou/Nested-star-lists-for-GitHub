@@ -35,7 +35,7 @@
 
   const mutedTag = text => {
     const tag = document.createElement('span');
-    tag.className = 'color-fg-muted text-normal';
+    tag.className = `color-fg-muted text-normal ${MARK}-path`;
     tag.style.cssText = 'margin-left:6px;font-weight:400;font-size:12px';
     tag.textContent = `(${text})`;
     return tag;
@@ -87,6 +87,9 @@
     .${MARK}-label { padding: 8px 16px; }
     .${MARK}-badge { margin-left: 6px; }
 
+    /* The tree already shows where a list sits, so the full path is opt-in. */
+    .${MARK}-path { display: none; }
+    :root[data-nsl-paths="on"] .${MARK}-path { display: inline; }
 
     /* 28px indent step + 24px caret slot + the 16px a row pads itself with; a
        folder row gets the last 16px from its own header, so both end up equal. */
@@ -501,9 +504,23 @@
     if (location.pathname !== seen) { seen = location.pathname; showTree(); }
   };
 
+  // Settings live in extension storage when there is one, and in localStorage for
+  // the userscript build. Applied as an attribute so the CSS above decides, which
+  // means the async read can land whenever it likes.
+  const PATHS_KEY = 'showFullPaths';
+  const applyPaths = on => { document.documentElement.dataset.nslPaths = on ? 'on' : 'off'; };
+  const loadSettings = () => {
+    const store = globalThis.chrome?.storage?.sync;
+    if (!store) return applyPaths(localStorage.getItem(`${MARK}:${PATHS_KEY}`) === 'true');
+    store.get({ [PATHS_KEY]: false }, v => applyPaths(v[PATHS_KEY]));
+    chrome.storage.onChanged.addListener(c => {
+      if (c[PATHS_KEY]) applyPaths(c[PATHS_KEY].newValue);
+    });
+  };
 
   const start = () => {
     (document.head || document.documentElement).append(style);
+    loadSettings();
     tick();
     // Watch documentElement: rows get nested as they stream in instead of after
     // the whole page settles. Also covers Turbo swaps.
