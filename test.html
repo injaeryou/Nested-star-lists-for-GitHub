@@ -148,8 +148,9 @@ setTimeout(() => {
 
   // railRows: every list on the index, deduped, one compact line each.
   const doc = new DOMParser().parseFromString(INDEX_HTML, 'text/html');
-  const rowsOut = api.railRows(doc, '/stars/me/lists/ai');
-  check('railRows returns every list', rowsOut.map(name).join(',') === 'AI/RAG,AI/agents,AI,toys');
+  const data = api.indexData(doc);
+  const rowsOut = api.railRows(data, '/stars/me/lists/ai');
+  check('indexData returns every list', rowsOut.map(name).join(',') === 'AI/RAG,AI/agents,AI,toys');
   check('railRows drops duplicate links',
     rowsOut.filter(r => r.getAttribute('href') === '/stars/me/lists/ai').length === 1);
   check('railRows marks the list you are on',

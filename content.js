@@ -333,17 +333,22 @@
   // index, rebuilt as one compact line each. GitHub's own list rows are page-width
   // cards (big bold title, description, "N repositories") — three of them fill a
   // 320px rail, so the rail gets its own row: name, then the repo count.
-  const railRows = (doc, pathname) => {
+  const indexData = doc => {
     const seen = new Set();
     return [...doc.querySelectorAll('a[href*="/lists/"]')]
       .filter(a => {
         const href = a.getAttribute('href') || '';
         return LIST_HREF.test(href) && !seen.has(href) && seen.add(href);
       })
-      .map(a => {
-        const href = a.getAttribute('href');
-        const full = nameOf(a);
-        const repos = a.textContent.match(/(\d[\d,]*)\s+repositor/)?.[1] || '';
+      .map(a => ({
+        href: a.getAttribute('href'),
+        name: nameOf(a),
+        repos: a.textContent.match(/(\d[\d,]*)\s+repositor/)?.[1] || '',
+      }));
+  };
+
+  const railRows = (data, pathname) =>
+      data.map(({ href, name: full, repos }) => {
         const row = document.createElement('a');
         row.className = `${MARK}-row`;
         row.setAttribute('href', href);
@@ -358,7 +363,6 @@
         row.append(nm, num);
         return row;
       });
-  };
 
   // The list page's repository list. Everything is mounted relative to it: it is
   // the one stable landmark on the page.
@@ -432,38 +436,69 @@
     return new DOMParser().parseFromString(await res.text(), 'text/html');
   };
 
-  const showTree = async () => {
-    const m = location.pathname.match(/^\/stars\/([^/]+)\/lists\/[^/]+$/);
-    if (!m || document.getElementById('nested-children')) return;
-    // The lists index only exists on the profile stars tab — /stars/<user>/lists
-    // is not a page.
-    const doc = await fetchDoc(`/${m[1]}?tab=stars`);
-    const rows = doc ? railRows(doc, location.pathname) : [];
-    if (!rows.length) return console.debug('[nested star lists] no lists found');
+  // The index is the same for every list page, so keep it for the tab's lifetime:
+  // the rail can then render at once and check for changes afterwards.
+  const cacheKey = user => `${MARK}:index:${user}`;
+  const readIndex = user => {
+    try { return JSON.parse(sessionStorage.getItem(cacheKey(user)) || 'null'); }
+    catch { return null; }
+  };
+  const writeIndex = (user, data) => {
+    try { sessionStorage.setItem(cacheKey(user), JSON.stringify(data)); } catch {}
+  };
 
-    const box = railBox(rows);
+  const mountRail = (data, user) => {
+    const old = document.getElementById('nested-children');
+    const query = old?.querySelector(`.${MARK}-filter`)?.value || '';
+    const box = railBox(railRows(data, location.pathname));
     const filter = box.querySelector(`.${MARK}-filter`);
     const total = box.querySelector('.Counter');
 
-    const main = document.querySelector('main') || document.body;
-    const repos = repoList(main);
-    if (repos) mountBeside(box, repos); else main.prepend(box);
+    if (old) old.replaceWith(box);
+    else {
+      const main = document.querySelector('main') || document.body;
+      const repos = repoList(main);
+      if (repos) mountBeside(box, repos); else main.prepend(box);
+    }
     nest(box);                     // same folder tree as the lists page
 
-    const closed = readClosed(m[1]);
+    const closed = readClosed(user);
     for (const d of box.querySelectorAll('details[data-nested-star-list-parent]'))
       if (closed.has(d.dataset[MARK + 'Parent'])) d.open = false;
-    box.addEventListener('toggle', () => rememberClosed(box, m[1]), true);
+    box.addEventListener('toggle', () => rememberClosed(box, user), true);
 
-    filter.addEventListener('input', () =>
-      filterRail(box, filter.value, n => {
-        total.textContent = String(n);
-        total.title = filter.value.trim() ? `${n} lists match` : `${n} lists`;
-      }));
+    const count = n => {
+      total.textContent = String(n);
+      total.title = filter.value.trim() ? `${n} lists match` : `${n} lists`;
+    };
+    filter.addEventListener('input', () => filterRail(box, filter.value, count));
+    if (query) { filter.value = query; filterRail(box, query, count); }
 
     // Scroll the rail (not the page) so the list you are on is in view.
     const here = box.querySelector(`.${MARK}-current`);
     if (here) box.scrollTop = here.offsetTop - box.clientHeight / 2;
+    return box;
+  };
+
+  const showTree = async () => {
+    const m = location.pathname.match(/^\/stars\/([^/]+)\/lists\/[^/]+$/);
+    if (!m || document.getElementById('nested-children')) return;
+    const user = m[1];
+
+    const cached = readIndex(user);
+    if (cached?.length) mountRail(cached, user);
+
+    // The lists index only exists on the profile stars tab — /stars/<user>/lists
+    // is not a page.
+    const doc = await fetchDoc(`/${user}?tab=stars`);
+    const fresh = doc ? indexData(doc) : [];
+    if (!fresh.length) {
+      if (!cached?.length) console.debug('[nested star lists] no lists found');
+      return;
+    }
+    writeIndex(user, fresh);
+    // Only touch the DOM again if the lists actually changed.
+    if (JSON.stringify(cached) !== JSON.stringify(fresh)) mountRail(fresh, user);
   };
 
   // Reuse GitHub's own Box classes so the rail looks like the rest of the page:
@@ -533,5 +568,6 @@
   else document.addEventListener('readystatechange', start, { once: true });
 
   // test hook
-  window.__nestedStarLists = { railRows, railBox, repoList, mountBeside, nest, filterRail };
+  window.__nestedStarLists =
+    { indexData, railRows, railBox, repoList, mountBeside, nest, filterRail };
 })();
