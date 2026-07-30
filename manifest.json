@@ -3,6 +3,7 @@
   "name": "Nested star lists for GitHub",
   "version": "0.1.0",
   "description": "Show star lists named parent/child as a collapsible folder tree.",
+  "homepage_url": "https://github.com/injaeryou/nested-star-lists-for-github",
   "browser_specific_settings": {
     "gecko": {
       "id": "nested-star-lists-for-github@injaeryou.dev",
