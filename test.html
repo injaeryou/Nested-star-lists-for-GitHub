@@ -498,6 +498,12 @@ setTimeout(() => {
   check('the rail counter reads pill-then-total',
     m2.querySelector('.Counter').textContent === '10' &&
     m2.querySelector('.nestedStarList-alltotal').textContent === '(12)');
+  const mf = m2.querySelector('.nestedStarList-filter');
+  mf.value = 'RAG';
+  mf.dispatchEvent(new Event('input'));
+  check('a running filter keeps the total beside its match count',
+    m2.querySelector('.Counter').textContent === '1' &&
+    m2.querySelector('.nestedStarList-alltotal').textContent === '(12)');
   m2.remove();
 
   // Re-running must not duplicate groups or re-split already-nested names.

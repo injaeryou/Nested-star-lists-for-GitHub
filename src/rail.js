@@ -152,20 +152,19 @@
     nest(box);                     // same folder tree as the lists page
 
     // Pill first, total after, the same order as the page heading: the Counter
-    // holds the top-level entries, the muted "(n)" every list. While a filter
-    // runs, the pill shows its match count instead.
+    // holds the top-level entries — or, while a filter runs, its match count —
+    // and the muted "(n)" always carries every list.
     const count = n => {
       const all = box.querySelector(`.${MARK}-alltotal`);
+      all.textContent = `(${data.length})`;
+      all.title = `${data.length} lists`;
       if (filter.value.trim()) {
         total.textContent = String(n);
-        total.title = `${n} lists match`;
-        all.textContent = '';
+        total.title = `${n} of ${data.length} lists match`;
       } else {
         const top = treeKids(box).length;
         total.textContent = String(top);
         total.title = `${top} top-level entries`;
-        all.textContent = `(${data.length})`;
-        all.title = `${data.length} lists`;
       }
     };
     filter.addEventListener('input', () => {
