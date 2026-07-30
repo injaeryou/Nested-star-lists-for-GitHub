@@ -1,0 +1,290 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>nested star lists — self check</title>
+<!-- The GitHub utility classes the rows rely on, so layout checks are real. -->
+<style>
+  .d-block { display: block; }
+  .Box-row { padding: 8px 16px; }
+  h3, span { display: inline; margin: 0; }
+  #listpage { width: 1000px; }
+</style>
+
+<!-- Fixture: real GitHub stars-lists markup (anchors are direct children of
+     .Box, each holding the name and a repository count in separate nodes). -->
+<div id="profile-lists-container">
+  <div class="Box">
+    <a class="d-block Box-row" href="/stars/me/lists/ai-rag"><div><h3>AI/RAG</h3><span>2 repositories</span></div></a>
+    <a class="d-block Box-row" href="/stars/me/lists/ai-agents"><div><h3>AI/agents</h3><span>5 repositories</span></div></a>
+    <a class="d-block Box-row" href="/stars/me/lists/ai-tools"><div><h3>AI/tools</h3><span>7 repositories</span></div></a>
+    <a class="d-block Box-row" href="/stars/me/lists/infra-k8s"><div><h3>Infra:k8s</h3><span>1 repository</span></div></a>
+    <!-- No "Infra/aws" list exists, so that folder is virtual. -->
+    <a class="d-block Box-row" href="/stars/me/lists/infra-aws-eks"><div><h3>Infra/aws/eks</h3><span>2 repositories</span></div></a>
+    <a class="d-block Box-row" href="/stars/me/lists/ai-rag-eval"><div><h3>AI/RAG/eval</h3><span>4 repositories</span></div></a>
+    <a class="d-block Box-row" href="/stars/me/lists/ai"><div><h3>AI</h3><span>3 repositories</span></div></a>
+    <a class="d-block Box-row" href="/stars/me/lists/toys"><div><h3>toys</h3><span>9 repositories</span></div></a>
+  </div>
+</div>
+<!-- Decoy: a list link outside the container must be left alone. -->
+<footer><a href="/stars/other/lists/x-y"><h3>Other/decoy</h3></a></footer>
+
+<!-- A list detail page: header block, then the repository list GitHub gives an
+     id to. The box mounts beside that list. -->
+<main id="listpage">
+  <a href="/stars/me">Stars</a>
+  <div class="col">
+    <div class="head"><h1>AI</h1><span>3 repositories</span></div>
+    <div id="user-list-repositories">
+      <div class="repo"><a href="/OpenCut-app/OpenCut">OpenCut</a></div>
+    </div>
+  </div>
+</main>
+
+<pre id="out"></pre>
+
+<script src="./content.js"></script>
+<script>
+const fails = [];
+let total = 0;
+const check = (n, cond) => { total++; if (!cond) fails.push(n); };
+const text = el => el?.textContent.trim() ?? '';
+const box = document.querySelector('#profile-lists-container .Box');
+// The displayed name is the h3's own text node; the muted "(full/name)" tag and
+// the count badge are appended after it, so read the node rather than the h3.
+const name = a =>
+  (a.querySelector('h3') || a.querySelector('.nestedStarList-name'))?.firstChild?.textContent.trim() ?? '';
+const count = a => a.querySelector('span:not(.color-fg-muted)');
+const names = (el, sel) => [...el.querySelectorAll(sel)].map(name);
+const x = el => el.getBoundingClientRect().left;
+const badge = el => text(el.querySelector('.nestedStarList-badge'));
+
+// The lists index as fetched over the network — untouched by the script, which
+// has already rewritten the names in the live DOM by the time this runs. The
+// duplicate link is there on purpose: the box must not show it twice.
+const INDEX_HTML = `
+  <a href="/stars/me/lists/ai-rag"><div><h3>AI/RAG</h3><span>2 repositories</span></div></a>
+  <a href="/stars/me/lists/ai-agents"><div><h3>AI/agents</h3><span>5 repositories</span></div></a>
+  <a href="/stars/me/lists/ai"><div><h3>AI</h3><span>3 repositories</span></div></a>
+  <a href="/stars/me/lists/ai"><div><h3>AI</h3><span>3 repositories</span></div></a>
+  <a href="/stars/me/lists/toys"><div><h3>toys</h3><span>9 repositories</span></div></a>`;
+
+// MutationObserver callbacks are async; wait a tick before asserting.
+setTimeout(() => {
+  const api = window.__nestedStarLists;
+  // Only top-level groups; nested ones are checked separately below.
+  const details = [...box.children].filter(el => el.tagName === 'DETAILS');
+  check('two top-level groups', details.length === 2);
+
+  const ai = details.find(d => d.dataset.nestedStarListParent === 'AI');
+  const infra = details.find(d => d.dataset.nestedStarListParent === 'Infra');
+  check('groups are AI + Infra', !!ai && !!infra);
+
+  check('prefix stripped off the rows', names(ai, ':scope > a').join(',') === 'agents,tools');
+  check('repo count kept', text(count(ai.querySelector(':scope > a'))) === '5 repositories');
+  check('colon separator works', names(infra, ':scope > a').join(',') === 'k8s');
+  check('list without separator stays flat', names(box, ':scope > a').join(',') === 'toys');
+  check('real list promoted to header',
+    ai.querySelector('summary a')?.getAttribute('href') === '/stars/me/lists/ai');
+  check('link outside container untouched', text(document.querySelector('footer a')) === 'Other/decoy');
+
+  // Folders before lists, each by name — GitHub's flat order stops applying.
+  check('folders sort before lists',
+    [...ai.children].filter(c => c.tagName !== 'SUMMARY').map(c => c.tagName).join(',') === 'DETAILS,A,A');
+
+  // "AI/RAG" sits between "AI" and "AI/RAG/eval", so it must become a group of
+  // its own inside AI, with the real list as its header.
+  const rag = ai.querySelector(':scope > details');
+  check('deeper groups nest recursively', rag?.dataset.nestedStarListParent === 'AI/RAG');
+  check('grandchild placed under its group', names(rag, ':scope > a').join(',') === 'eval');
+  check('deep group header promoted',
+    rag.querySelector('summary a')?.getAttribute('href') === '/stars/me/lists/ai-rag');
+
+  // How many lists live directly inside each folder.
+  check('folder shows its child count', badge(ai.querySelector('summary')) === '3');
+  check('nested folder counts its own children', badge(rag.querySelector('summary')) === '1');
+
+  // The caret is a real element so it can own its hover area, and promotion must
+  // not throw it away when it swaps the label for the real row.
+  const caret = ai.querySelector(':scope > summary > .nestedStarList-caret');
+  check('caret is its own element', getComputedStyle(caret).width === '24px');
+  check('promotion keeps the caret', ai.querySelector('summary').firstElementChild === caret);
+  const headLink = ai.querySelector('summary a');
+  check('caret sits inline with the header row',
+    Math.abs(caret.getBoundingClientRect().height - headLink.getBoundingClientRect().height) < 2 &&
+    x(headLink) > x(caret));
+
+  // A folder and a list at the same depth must line their names up: the folder
+  // spends the caret slot, the list leaves it empty.
+  check('folder and list rows align at the same depth',
+    Math.abs(x(rag.querySelector('summary h3')) - x(ai.querySelector(':scope > a h3'))) <= 1);
+  check('children indented past the parent name',
+    x(rag.querySelector(':scope > a h3')) - x(rag.querySelector('summary h3')) >= 16);
+
+  // Folder-tree guides: full-height stem on every child but the last, which gets
+  // a half stem so the line ends at its elbow.
+  const stem = el => getComputedStyle(el, '::before');
+  const rows = [...ai.querySelectorAll(':scope > a')];
+  const stemRatio = el => parseFloat(stem(el).height) / el.offsetHeight;
+  check('tree stem drawn beside children', stem(rows[0]).borderLeftWidth === '1px');
+  check('elbow drawn into the child row',
+    getComputedStyle(rows[0], '::after').borderTopWidth === '1px');
+  check('stem runs the full height of a middle child', Math.abs(stemRatio(rows[0]) - 1) < 0.1);
+  check('stem stops half-way on the last child',
+    Math.abs(stemRatio([...ai.children].at(-1)) - 0.5) < 0.1);
+
+  // A virtual folder (no list of its own) still shows its path and a full row.
+  const aws = infra.querySelector(':scope > details');
+  check('virtual folder nests under its parent', aws?.dataset.nestedStarListParent === 'Infra/aws');
+  check('virtual folder shows its full path muted',
+    text(aws.querySelector('summary .color-fg-muted')) === '(Infra/aws)');
+  check('virtual folder header is a full row',
+    getComputedStyle(aws.querySelector('summary .nestedStarList-label')).paddingTop === '8px');
+  // The full path is built into the row but hidden until the option is on.
+  const pathTag = ai.querySelector(':scope > a .nestedStarList-path');
+  check('full path carries the original name', text(pathTag) === '(AI/agents)');
+  check('full path is off by default', getComputedStyle(pathTag).display === 'none');
+  document.documentElement.dataset.nslPaths = 'on';
+  check('option turns the full path on', getComputedStyle(pathTag).display === 'inline');
+  document.documentElement.dataset.nslPaths = 'off';
+
+  // railRows: every list on the index, deduped, one compact line each.
+  const doc = new DOMParser().parseFromString(INDEX_HTML, 'text/html');
+  const rowsOut = api.railRows(doc, '/stars/me/lists/ai');
+  check('railRows returns every list', rowsOut.map(name).join(',') === 'AI/RAG,AI/agents,AI,toys');
+  check('railRows drops duplicate links',
+    rowsOut.filter(r => r.getAttribute('href') === '/stars/me/lists/ai').length === 1);
+  check('railRows marks the list you are on',
+    rowsOut.filter(r => r.classList.contains('nestedStarList-current'))
+      .map(r => r.getAttribute('href')).join() === '/stars/me/lists/ai');
+  check('railRows keeps the repo count as a number',
+    text(rowsOut[0].querySelector('.nestedStarList-num')) === '2');
+  check('railRows drops the page-width card markup',
+    !rowsOut[0].querySelector('h3') && !/repositories/.test(rowsOut[0].textContent));
+  check('railRows carries the full name in the tooltip',
+    rowsOut[0].title === 'AI/RAG — 2 repositories');
+
+  // On a list page the box mounts beside the repositories, which is the one
+  // element GitHub gives a stable id to.
+  const listpage = document.getElementById('listpage');
+  const repos = api.repoList(listpage);
+  check('repository list found by id', repos?.id === 'user-list-repositories');
+  const sideBox = api.railBox(rowsOut);
+  api.mountBeside(sideBox, repos);
+  api.nest(sideBox);
+  // The whole list column moves into the left cell, so the box starts level with
+  // the title instead of below the repositories.
+  check('list column moved into the left cell',
+    repos.parentElement.className === 'nestedStarList-main' &&
+    repos.parentElement.contains(listpage.querySelector('h1')));
+  check('left cell and box are the flex row',
+    [...sideBox.parentElement.children].map(c => c.className.split(' ')[0]).join(',') ===
+    'nestedStarList-main,Box');
+  const wide = !matchMedia('(max-width: 1011px)').matches;
+  check('box starts at the title, not below it',      // stacked below when narrow
+    !wide || sideBox.getBoundingClientRect().top <= listpage.querySelector('h1').getBoundingClientRect().top + 1);
+  // Beside the repositories and pinned on a wide screen; stacked below them once
+  // the window is too narrow for two columns.
+  check('box sits beside the repositories, pinned',
+    wide
+      ? x(sideBox) >= repos.parentElement.getBoundingClientRect().right - 1 &&
+        getComputedStyle(sideBox).position === 'sticky'
+      : getComputedStyle(sideBox).position === 'static' &&
+        sideBox.getBoundingClientRect().top >= repos.getBoundingClientRect().top);
+  check('box nests the same way', sideBox.querySelector(':scope > details')?.dataset.nestedStarListParent === 'AI');
+  check('box keeps lists that have no children',
+    names(sideBox, ':scope > a').join(',') === 'toys');
+
+  // Compact by construction: one 26px line per list, path folded away (the tree
+  // shows it), counts as bare numbers, and only the count drops when very narrow.
+  const railRow = sideBox.querySelector('.nestedStarList-row');
+  check('rail rows are one compact line', railRow.getBoundingClientRect().height <= 28);
+  check('rail folds the full path away',
+    getComputedStyle(sideBox.querySelector('.color-fg-muted')).display === 'none');
+  check('rail indents less than the full-width page',
+    parseFloat(getComputedStyle(sideBox.querySelector('details > a')).paddingLeft) === 40);
+  check('rail keeps the count at 280px',
+    (sideBox.style.width = '280px',
+      getComputedStyle(sideBox.querySelector('.nestedStarList-num')).display !== 'none'));
+  check('rail drops the count when very narrow',
+    (sideBox.style.width = '200px',
+      getComputedStyle(sideBox.querySelector('.nestedStarList-num')).display === 'none'));
+  sideBox.style.width = '';
+
+  // Connector lines belong to the full-width page; the rail leans on indent and
+  // weight instead, so lists read as destinations and folders as structure.
+  check('rail drops the connector lines',
+    getComputedStyle(sideBox.querySelector('details > a'), '::before').content === 'none');
+  check('rail dims list names, keeps folders solid',
+    getComputedStyle(sideBox.querySelector('details > a .nestedStarList-name')).color !==
+    getComputedStyle(sideBox.querySelector('summary .nestedStarList-name')).color);
+
+  // Filtering: narrow to matches, open the folders that still have one, report
+  // how many are left, and restore the tree when cleared.
+  let reported = -1;
+  const report = n => { reported = n; };
+  const railFolder = sideBox.querySelector('details[data-nested-star-list-parent]');
+  railFolder.open = false;
+  api.filterRail(sideBox, 'agents', report);
+  check('filter reports the match count', reported === 1);
+  check('filter leaves the match and its path, nothing else',
+    [...sideBox.querySelectorAll('.nestedStarList-row')].filter(r => !r.hidden)
+      .map(r => r.getAttribute('href')).sort().join() ===
+      '/stars/me/lists/ai,/stars/me/lists/ai-agents');
+  check('filter opens folders that still hold a match', railFolder.open === true);
+  check('filter keeps the parent row as the path to the match',
+    railFolder.querySelector('summary .nestedStarList-row').hidden === false);
+  api.filterRail(sideBox, 'toys', report);
+  check('filter hides folders with nothing left', railFolder.hidden === true);
+  api.filterRail(sideBox, '', report);
+  check('clearing the filter shows the folders again', railFolder.hidden === false);
+  check('clearing the filter restores every row',
+    [...sideBox.querySelectorAll('.nestedStarList-row')].every(r => !r.hidden) && reported === 4);
+  check('clearing the filter restores the collapsed state', railFolder.open === false);
+  railFolder.open = true;
+
+  // Credit line: pinned at the bottom, one small row, opens the repo safely.
+  const foot = sideBox.querySelector('.nestedStarList-foot');
+  const creditLink = foot.querySelector('a');
+  check('credit line names the extension', text(creditLink) === 'Nested star lists for GitHub');
+  check('credit line links to the repo',
+    creditLink.getAttribute('href') === 'https://github.com/injaeryou/nested-star-lists-for-github' &&
+    creditLink.target === '_blank' && creditLink.rel === 'noopener noreferrer');
+  check('credit line is pinned and small',
+    getComputedStyle(foot).position === 'sticky' && foot.getBoundingClientRect().height <= 28);
+  check('credit line sits below the lists', foot === sideBox.lastElementChild);
+
+  // No horizontal scrollbar: long names ellipsis instead.
+  check('rail never scrolls sideways', getComputedStyle(sideBox).overflowX === 'hidden');
+
+  // The child count stays on screen whether the folder is open or closed.
+  const shownBadge = railFolder.querySelector('summary .nestedStarList-badge');
+  check('open folder shows its child count',
+    getComputedStyle(shownBadge).display !== 'none');
+  railFolder.open = false;
+  check('collapsed folder shows its child count',
+    getComputedStyle(shownBadge).display !== 'none');
+  check('header counter says what it counts',
+    sideBox.querySelector('.Counter').title === '4 lists');
+  // Badge next to the name, not stranded at the right edge beside the repo count.
+  const headRow = railFolder.querySelector('summary .nestedStarList-row');
+  check('child count sits against the name',
+    shownBadge.getBoundingClientRect().left -
+    railFolder.querySelector('summary .nestedStarList-name').getBoundingClientRect().right < 12);
+  check('repo count keeps the right edge',
+    headRow.getBoundingClientRect().right -
+    headRow.querySelector('.nestedStarList-num').getBoundingClientRect().right < 12);
+  railFolder.open = true;
+
+  // Re-running must not duplicate groups or re-split already-nested names.
+  box.appendChild(document.createElement('a'));
+  setTimeout(() => {
+    check('idempotent after DOM change',
+      [...box.children].filter(el => el.tagName === 'DETAILS').length === 2 &&
+      box.querySelectorAll('details').length === 4);
+    check('child name stable', names(ai, ':scope > a').join(',') === 'agents,tools');
+    const out = document.getElementById('out');
+    out.textContent = fails.length ? 'FAIL: ' + fails.join(' | ') : `PASS (${total} checks)`;
+    out.style.color = fails.length ? 'crimson' : 'green';
+    window.__result = out.textContent;
+  }, 50);
+}, 50);
+</script>
