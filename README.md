@@ -1,3 +1,5 @@
+![](assets/Marquee-1400x560.png)
+
 # Nested star lists for GitHub
 
 GitHub star lists are one level deep. This browser extension (Chrome + Firefox,
@@ -7,6 +9,8 @@ rail of every list beside a single list's page.
 
 Nothing is stored anywhere and no list is modified: your lists keep their real
 names, and the tree is built in the page from them.
+
+![The stars tab, drawn as a folder tree](assets/After-1280x800.png)
 
 ## Naming
 
@@ -20,6 +24,10 @@ parent/child/grandchild   →     └ grandchild
 
 A list named exactly like a folder (`parent` next to `parent/child`) becomes
 that folder's own clickable row.
+
+On a single list's page the same tree comes along as a rail, with a filter:
+
+![A list page with the rail beside it](assets/Rail-1280x800.png)
 
 ## Install
 
