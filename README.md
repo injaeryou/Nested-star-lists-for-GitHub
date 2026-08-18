@@ -14,6 +14,10 @@ a pinned rail of every list beside a single list's page.
 Nothing is stored anywhere and no list is modified: your lists keep their real
 names, and the tree is built in the page from them.
 
+> [!NOTE]
+> No API token: your lists are read through the GitHub session you are already
+> signed into — private lists included, nothing stored, nothing to leak.
+
 ![The stars tab, drawn as a folder tree](assets/After-1280x800.png)
 
 ## Naming

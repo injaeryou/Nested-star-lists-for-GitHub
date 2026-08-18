@@ -6,11 +6,14 @@ list's page.
 
 ## Ground rules that are easy to get wrong
 
-- **The star-list API exists but is unusable here.** GraphQL has `User.lists` /
-  `UserList` and create/update/delete mutations — but `api.github.com` takes a
-  bearer token, not the session cookie. Using it means asking for a PAT, which
-  costs private-list visibility and the zero-storage promise. Stay on the
-  same-origin `fetch` of the lists index. The mutations are the only thing worth
+- **The star-list API exists but is not worth its price here.** GraphQL has
+  `User.lists` / `UserList` and create/update/delete mutations — but
+  `api.github.com` takes a bearer token, not the session cookie. A PAT with the
+  right scope *does* see your own private lists (checked 2026-08-19, community
+  discussion #8293); what it actually costs is the zero-storage promise (the
+  token has to live somewhere) and works-on-install onboarding (create, scope,
+  paste, expire). Far more capability than the read path needs, for a marginal
+  gain. Stay on the same-origin `fetch` of the lists index. The mutations are the only thing worth
   wanting (renaming a list into `parent/child` from the UI) — and that's opt-in,
   not a rewrite of how lists are read.
 - **The lists index is only `/<user>?tab=stars`.** `/stars/<user>/lists` is not a
