@@ -51,6 +51,15 @@ details[data-nested-star-list-parent] > details { padding-left: 28px; }
    the tree guides carry the structure instead. */
 details[data-nested-star-list-parent] .Box-row { border-top: 0; }
 
+/* GitHub is mid-migration, moving the row padding from .Box-row onto an inner
+   tmp-py-3 div. Sessions on the old CSS get both (a doubled, 88px row), newer
+   sessions get only the inner one (56px). Converge every session on the new
+   height; when the tmp- class ships for real, this stops matching and retires
+   itself. */
+#profile-lists-container .Box a.Box-row:has(> .tmp-py-3) {
+  padding-top: 0; padding-bottom: 0;
+}
+
 /* One rule between every pair of top-level entries — folders and loose lists
    alike — while the rows inside a group stay divider-free. */
 #profile-lists-container .Box
