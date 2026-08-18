@@ -242,6 +242,10 @@ setTimeout(() => {
   const data = api.indexData(doc);
   const rowsOut = api.railRows(data, '/stars/me/lists/ai');
   check('indexData returns every list', rowsOut.map(name).join(',') === 'AI/RAG,AI/agents,AI,toys');
+  // The live stars tab is a page nest() already renamed: the harvested index
+  // must still carry full names, or a warmed cache would rebuild a flat rail.
+  check('indexData reads full names off a processed page',
+    api.indexData(box).filter(d => d.name.startsWith('AI/')).length >= 3);
   check('railRows drops duplicate links',
     rowsOut.filter(r => r.getAttribute('href') === '/stars/me/lists/ai').length === 1);
   check('railRows marks the list you are on',

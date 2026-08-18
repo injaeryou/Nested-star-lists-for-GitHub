@@ -1,6 +1,6 @@
 // Part of Nested star lists for GitHub. Loaded in manifest order.
 (() => {
-  const { MARK, nameOf, nest, expand, foldButton, treeKids } = globalThis.__nsl;
+  const { MARK, fullOf, nest, expand, foldButton, treeKids } = globalThis.__nsl;
 
   const APP_NAME = 'Nested star lists for GitHub';
   const REPO_URL = 'https://github.com/injaeryou/nested-star-lists-for-github';
@@ -21,7 +21,9 @@
       })
       .map(a => ({
         href: a.getAttribute('href'),
-        name: nameOf(a),
+        // fullOf, not nameOf: on a page nest() already processed, the visible
+        // name is shortened and the original lives in the dataset.
+        name: fullOf(a),
         repos: a.textContent.match(/(\d[\d,]*)\s+repositor/)?.[1] || '',
       }));
   };
@@ -121,6 +123,19 @@
     return new DOMParser().parseFromString(await res.text(), 'text/html');
   };
 
+  // On a hard load of a list page the fetch can run while GitHub still renders
+  // the page — showTree only fires once the column exists, and waiting until
+  // then to *start* the request puts the whole round trip after the paint.
+  // The catch is not optional: nothing owns this promise until showTree awaits
+  // it, and showTree never runs on a page with no list column — a rejection
+  // there would surface as an unhandled error nobody can act on.
+  const m0 = location.pathname.match(/^\/stars\/([^/]+)\/lists\/[^/]+$/);
+  let prefetch = m0 ? {
+    user: m0[1],
+    doc: fetchDoc(`/${m0[1]}?tab=stars`)
+      .catch(e => { console.debug('[nested star lists] index prefetch failed', e); return null; }),
+  } : null;
+
   // The index is the same for every list page, so keep it for the tab's lifetime:
   // the rail can then render at once and check for changes afterwards.
   const cacheKey = user => `${MARK}:index:${user}`;
@@ -130,6 +145,22 @@
   };
   const writeIndex = (user, data) => {
     try { sessionStorage.setItem(cacheKey(user), JSON.stringify(data)); } catch {}
+  };
+
+  // The stars tab holds the whole index in its own DOM, so warm the cache from
+  // there: the first hop into a list then mounts the rail with no fetch at all.
+  // Runs on every tick — the string memo keeps the repeat calls at one compare.
+  let harvested = '';
+  const harvestIndex = () => {
+    if (!document.querySelector('#profile-lists-container .Box')) return;
+    if (!/^\/[^/]+$/.test(location.pathname)) return;
+    const data = indexData(document);
+    const json = JSON.stringify(data);
+    if (!data.length || json === harvested) return;
+    harvested = json;
+    // Raw pathname segment, no decoding: showTree keys the cache with the raw
+    // segment from the list URL, and the two must match.
+    writeIndex(location.pathname.slice(1), data);
   };
 
   const mountRail = (data, user) => {
@@ -196,7 +227,9 @@
 
     // The lists index only exists on the profile stars tab — /stars/<user>/lists
     // is not a page.
-    const doc = await fetchDoc(`/${user}?tab=stars`);
+    const early = prefetch?.user === user ? prefetch.doc : null;
+    prefetch = null;
+    const doc = await (early || fetchDoc(`/${user}?tab=stars`));
     const fresh = doc ? indexData(doc) : [];
     if (!fresh.length) {
       if (!cached?.length) console.debug('[nested star lists] no lists found');
@@ -244,5 +277,6 @@
 
   Object.assign(globalThis.__nsl, {
     indexData, railRows, railBox, listColumn, mountBeside, adoptStrays, filterRail, showTree, mountRail,
+    harvestIndex,
   });
 })();

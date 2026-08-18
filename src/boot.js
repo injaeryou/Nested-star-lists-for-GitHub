@@ -1,11 +1,12 @@
 // Part of Nested star lists for GitHub. Loaded in manifest order.
 (() => {
-  const { nest, showTree, loadSettings, listColumn, adoptStrays } = globalThis.__nsl;
+  const { nest, showTree, loadSettings, listColumn, adoptStrays, harvestIndex } = globalThis.__nsl;
 
   let seen = '';
   const tick = () => {
     nest();
     adoptStrays();
+    harvestIndex();
     // Wait for the list column: at document_start there is no body yet, and a
     // cached index would otherwise mount the rail with nothing to mount it beside.
     if (!document.getElementById('nested-children')) seen = '';   // a page swap took it
