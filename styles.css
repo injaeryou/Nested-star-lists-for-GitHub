@@ -1,4 +1,40 @@
 /* Injected by the manifest, so the tree is styled before the first row lands. */
+/* Colour comes from Primer's own tokens, so the UI follows whatever theme the
+   reader picked — including GitHub's explicit light/dark setting, which no
+   media query can see. The fallbacks below only matter on a page that has not
+   defined them, and there the scheme is all there is to go on: hence the pair
+   of blocks. Everything downstream uses --nsl-*, never a raw colour. */
+:root {
+  --nsl-line: var(--borderColor-muted, #d1d9e0b3);
+  --nsl-border: var(--borderColor-default, #d1d9e0);
+  --nsl-fg: var(--fgColor-default, #1f2328);
+  --nsl-muted: var(--fgColor-muted, #59636e);
+  --nsl-accent: var(--fgColor-accent, #0969da);
+  --nsl-bg-muted: var(--bgColor-muted, #f6f8fa);
+  --nsl-bg-inset: var(--bgColor-inset, #f6f8fa);
+  --nsl-bg-neutral: var(--bgColor-neutral-muted, #6e768118);
+  --nsl-bg-accent: var(--bgColor-accent-muted, #ddf4ff);
+}
+/* Glyphs, as masks rather than pictures: a fill baked into a data URI
+   cannot follow a theme, but the colour painted through a mask can. */
+:root { --nsl-repo-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v3.25a.25.25 0 0 1-.4.2l-1.45-1.087a.249.249 0 0 0-.3 0L5.4 15.7a.25.25 0 0 1-.4-.2Z'/%3E%3C/svg%3E"); }
+:root { --nsl-list-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M5.75 2.5h8.5a.75.75 0 0 1 0 1.5h-8.5a.75.75 0 0 1 0-1.5Zm0 5h8.5a.75.75 0 0 1 0 1.5h-8.5a.75.75 0 0 1 0-1.5Zm0 5h8.5a.75.75 0 0 1 0 1.5h-8.5a.75.75 0 0 1 0-1.5ZM2 14a1 1 0 1 1 0-2 1 1 0 0 1 0 2Zm1-6a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM2 4a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z'/%3E%3C/svg%3E"); }
+:root { --nsl-search-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M10.68 11.74a6 6 0 0 1-7.922-8.982 6 6 0 0 1 8.982 7.922l3.04 3.04a.749.749 0 0 1-.53 1.28.749.749 0 0 1-.53-.22ZM11.5 7a4.499 4.499 0 1 0-8.997 0A4.499 4.499 0 0 0 11.5 7Z'/%3E%3C/svg%3E"); }
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --nsl-line: var(--borderColor-muted, #3d444db3);
+    --nsl-border: var(--borderColor-default, #3d444d);
+    --nsl-fg: var(--fgColor-default, #f0f6fc);
+    --nsl-muted: var(--fgColor-muted, #9198a1);
+    --nsl-accent: var(--fgColor-accent, #4493f8);
+    --nsl-bg-muted: var(--bgColor-muted, #151b23);
+    --nsl-bg-inset: var(--bgColor-inset, #010409);
+    --nsl-bg-neutral: var(--bgColor-neutral-muted, #656c7633);
+    --nsl-bg-accent: var(--bgColor-accent-muted, #388bfd1a);
+  }
+}
+
 details[data-nested-star-list-parent] > summary {
   display: flex; align-items: center; list-style: none; padding: 0;
   cursor: pointer;
@@ -23,11 +59,11 @@ details[data-nested-star-list-parent][open] > summary > .nestedStarList-caret .n
   display: none;
 }
 .nestedStarList-caret:hover,
-.nestedStarList-label:hover { background: var(--bgColor-neutral-muted, #6e768118); }
+.nestedStarList-label:hover { background: var(--nsl-bg-neutral); }
 /* A folder with no list of its own is a label, not a destination: muted, lighter,
    and its icon steps back. */
 details[data-nested-star-list-virtual] > summary .nestedStarList-label {
-  color: var(--fgColor-muted, #59636e); font-weight: 400;
+  color: var(--nsl-muted); font-weight: 400;
 }
 details[data-nested-star-list-virtual] > summary > .nestedStarList-caret svg { opacity: .45; }
 
@@ -65,7 +101,7 @@ details[data-nested-star-list-parent] .Box-row { border-top: 0; }
 #profile-lists-container .Box
   > :is(details[data-nested-star-list-parent], a[href*="/lists/"])
   ~ :is(details[data-nested-star-list-parent], a[href*="/lists/"]) {
-  border-top: 1px solid var(--borderColor-muted, #d1d9e0);
+  border-top: 1px solid var(--nsl-line);
 }
 
 /* Folder-tree guides: a stem down the group, an elbow into each child. They sit
@@ -75,19 +111,19 @@ details[data-nested-star-list-parent] > :not(summary) { position: relative; }
 details[data-nested-star-list-parent] > :not(summary)::before {
   /* 12px = the centre of the parent's folder icon, so the stem hangs off it. */
   content: ''; position: absolute; left: 12px; top: 0; bottom: 0; z-index: 1;
-  border-left: 1px solid var(--borderColor-muted, #d1d9e0);
+  border-left: 1px solid var(--nsl-line);
 }
 /* The last child's stem and elbow are one box, not two lines meeting at a
    point: a corner can only be rounded if something owns it. */
 details[data-nested-star-list-parent] > :not(summary):last-child::before {
   bottom: auto; height: 50%; width: 18px;
-  border-bottom: 1px solid var(--borderColor-muted, #d1d9e0);
+  border-bottom: 1px solid var(--nsl-line);
   border-bottom-left-radius: 6px;
 }
 details[data-nested-star-list-parent] > :not(summary):last-child::after { content: none; }
 details[data-nested-star-list-parent] > :not(summary)::after {
   content: ''; position: absolute; left: 12px; top: 50%; width: 18px; z-index: 1;
-  border-top: 1px solid var(--borderColor-muted, #d1d9e0);
+  border-top: 1px solid var(--nsl-line);
 }
 /* A folder child is as tall as its whole subtree, so hanging its connector off
    the box middle points at the wrong row. Draw it on its own header instead. */
@@ -96,13 +132,13 @@ details[data-nested-star-list-parent] > details:last-child::before { content: no
 details[data-nested-star-list-parent] > details > summary { position: relative; }
 details[data-nested-star-list-parent] > details > summary::after {
   content: ''; position: absolute; left: -16px; top: 50%; width: 16px; z-index: 1;
-  border-top: 1px solid var(--borderColor-muted, #d1d9e0);
+  border-top: 1px solid var(--nsl-line);
 }
 details[data-nested-star-list-parent] > details:last-child > summary::after { content: none; }
 details[data-nested-star-list-parent] > details:last-child > summary::before {
   content: ''; position: absolute; left: -16px; top: 0; height: 50%; width: 16px; z-index: 1;
-  border-left: 1px solid var(--borderColor-muted, #d1d9e0);
-  border-bottom: 1px solid var(--borderColor-muted, #d1d9e0);
+  border-left: 1px solid var(--nsl-line);
+  border-bottom: 1px solid var(--nsl-line);
   border-bottom-left-radius: 6px;
 }
 
@@ -123,30 +159,39 @@ details[data-nested-star-list-parent] > details:last-child > summary::before {
   #nested-children { width: 100%; position: static; }
 }
 .nestedStarList-current {
-  background: var(--bgColor-accent-muted, #388bfd1a);
-  box-shadow: inset 2px 0 0 var(--fgColor-accent, #4493f8);
+  background: var(--nsl-bg-accent);
+  box-shadow: inset 2px 0 0 var(--nsl-accent);
 }
 /* --- the rail: one line per list, styled like GitHub's file explorer ---- */
 #nested-children [hidden] { display: none !important; }
 #nested-children details[data-nested-star-list-parent] { border-top: 0; }
 #nested-children .Box-header {
   position: sticky; top: 0; z-index: 1; padding: 9px 10px;
-  background: var(--bgColor-muted, #f6f8fa);
+  background: var(--nsl-bg-muted);
   display: flex; align-items: center; gap: 8px;
 }
 /* Look like a field, not a label: GitHub's own input treatment, with the search
    glyph inside so the box reads as somewhere you can type. */
+/* The glyph sat in the input's background, where nothing can colour it. On the
+   header it is an element, so it takes the same token as everything else.
+   19px = the header's 10px padding, the input's 1px border, and the 8px the
+   glyph sits in from that edge. */
+#nested-children .Box-header::before {
+  content: ''; position: absolute; left: 19px; top: 50%; transform: translateY(-50%);
+  width: 14px; height: 14px; background-color: var(--nsl-muted);
+  -webkit-mask: var(--nsl-search-icon) no-repeat center / 14px 14px;
+  mask: var(--nsl-search-icon) no-repeat center / 14px 14px;
+}
 #nested-children .nestedStarList-filter {
   flex: 1; min-width: 0; height: 28px; padding: 0 8px 0 28px;
-  border: 1px solid var(--borderColor-default, #3d444d); border-radius: 6px;
-  background: var(--bgColor-inset, #f6f8fa) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%236e7681'%3E%3Cpath d='M10.68 11.74a6 6 0 0 1-7.922-8.982 6 6 0 0 1 8.982 7.922l3.04 3.04a.749.749 0 0 1-.53 1.28.749.749 0 0 1-.53-.22ZM11.5 7a4.499 4.499 0 1 0-8.997 0A4.499 4.499 0 0 0 11.5 7Z'/%3E%3C/svg%3E") no-repeat 8px center;
-  background-size: 14px 14px;
-  font-size: 12px; color: var(--fgColor-default, #1f2328); outline: 0;
+  border: 1px solid var(--nsl-border); border-radius: 6px;
+  background: var(--nsl-bg-inset);
+  font-size: 12px; color: var(--nsl-fg); outline: 0;
 }
-#nested-children .nestedStarList-filter::placeholder { color: var(--fgColor-muted, #59636e); }
+#nested-children .nestedStarList-filter::placeholder { color: var(--nsl-muted); }
 #nested-children .nestedStarList-filter:focus {
-  border-color: var(--fgColor-accent, #4493f8);
-  box-shadow: inset 0 0 0 1px var(--fgColor-accent, #4493f8);
+  border-color: var(--nsl-accent);
+  box-shadow: inset 0 0 0 1px var(--nsl-accent);
 }
 #nested-children .nestedStarList-filter::-webkit-search-cancel-button { cursor: pointer; }
 /* The same guides as the wide page, tuned to the rail's 16px indent: the stem
@@ -177,20 +222,20 @@ details[data-nested-star-list-parent] > details:last-child > summary::before {
 #nested-children .nestedStarList-label { font-weight: 600; }
 #nested-children details[data-nested-star-list-virtual] .nestedStarList-label { font-weight: 400; }
 #nested-children .nestedStarList-label { cursor: default; }
-#nested-children .nestedStarList-row .nestedStarList-name { color: var(--fgColor-muted, #59636e); }
+#nested-children .nestedStarList-row .nestedStarList-name { color: var(--nsl-muted); }
 #nested-children .nestedStarList-row:hover .nestedStarList-name,
-#nested-children summary .nestedStarList-row .nestedStarList-name { color: var(--fgColor-default, #1f2328); }
+#nested-children summary .nestedStarList-row .nestedStarList-name { color: var(--nsl-fg); }
 #nested-children .nestedStarList-current .nestedStarList-name {
-  color: var(--fgColor-accent, #0969da); font-weight: 600;
+  color: var(--nsl-accent); font-weight: 600;
 }
 #nested-children .nestedStarList-row {
   display: flex; align-items: center; gap: 8px;
   /* No vertical margin: a gap between rows would break the tree stem. */
   margin: 0 4px; padding: 3px 8px; border-radius: 6px;
   font-size: 12px; line-height: 20px; border: 0;
-  color: var(--fgColor-default, #1f2328); text-decoration: none;
+  color: var(--nsl-fg); text-decoration: none;
 }
-#nested-children .nestedStarList-row:hover { background: var(--bgColor-neutral-muted, #6e768118); }
+#nested-children .nestedStarList-row:hover { background: var(--nsl-bg-neutral); }
 /* Shrink-only, so the child-count badge sits against the name instead of
    being pushed to the far edge; the repo count keeps the right edge. */
 #nested-children .nestedStarList-name {
@@ -204,13 +249,15 @@ details[data-nested-star-list-parent] > details:last-child > summary::before {
 .nestedStarList-label::after { content: '\200B'; }
 #nested-children .nestedStarList-num {
   flex: none; margin-left: auto; font-size: 11px; font-variant-numeric: tabular-nums;
-  color: var(--fgColor-muted, #59636e);
+  color: var(--nsl-muted);
 }
 /* A repo glyph in front of the count, so the bare number explains itself. */
 #nested-children .nestedStarList-num:not(:empty)::before {
   content: ''; display: inline-block; width: 12px; height: 12px;
   margin-right: 3px; vertical-align: -1.5px; opacity: .75;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%236e7681'%3E%3Cpath d='M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v3.25a.25.25 0 0 1-.4.2l-1.45-1.087a.249.249 0 0 0-.3 0L5.4 15.7a.25.25 0 0 1-.4-.2Z'/%3E%3C/svg%3E") no-repeat center / 12px 12px;
+  background-color: var(--nsl-muted);
+  -webkit-mask: var(--nsl-repo-icon) no-repeat center / 12px 12px;
+  mask: var(--nsl-repo-icon) no-repeat center / 12px 12px;
 }
 /* The tree already shows the path, and the row title carries the full name. */
 #nested-children .color-fg-muted { display: none; }
@@ -223,7 +270,6 @@ details[data-nested-star-list-parent] > details:last-child > summary::before {
 #nested-children > .nestedStarList-row { padding-left: 24px; }
 #nested-children details[data-nested-star-list-parent] > a { padding-left: 40px; }
 #nested-children details[data-nested-star-list-parent] > details { padding-left: 16px; }
-:root { --nsl-list-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%236e7681'%3E%3Cpath d='M5.75 2.5h8.5a.75.75 0 0 1 0 1.5h-8.5a.75.75 0 0 1 0-1.5Zm0 5h8.5a.75.75 0 0 1 0 1.5h-8.5a.75.75 0 0 1 0-1.5Zm0 5h8.5a.75.75 0 0 1 0 1.5h-8.5a.75.75 0 0 1 0-1.5ZM2 14a1 1 0 1 1 0-2 1 1 0 0 1 0 2Zm1-6a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM2 4a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z'/%3E%3C/svg%3E"); }
 
 /* Every list row gets the list glyph — loose ones aligned with the folder
    icons, nested ones in the slot their folder siblings spend on the caret. */
@@ -233,8 +279,9 @@ details[data-nested-star-list-parent] > details:last-child > summary::before {
 #profile-lists-container .Box > a[href*="/lists/"]::before,
 #nested-children > .nestedStarList-row::before {
   content: ''; position: absolute; top: 50%; transform: translateY(-50%);
-  width: 16px; height: 16px; opacity: .7;
-  background: var(--nsl-list-icon) no-repeat center / 14px 14px;
+  width: 16px; height: 16px; opacity: .7; background-color: var(--nsl-muted);
+  -webkit-mask: var(--nsl-list-icon) no-repeat center / 14px 14px;
+  mask: var(--nsl-list-icon) no-repeat center / 14px 14px;
 }
 #profile-lists-container .Box > a[href*="/lists/"]::before { left: 5px; }
 #nested-children > .nestedStarList-row { position: relative; padding-left: 26px; }
@@ -246,7 +293,7 @@ details[data-nested-star-list-parent] > details:last-child > summary::before {
    labelled beside the "Lists (N)" heading. */
 .nestedStarList-heading { display: flex; align-items: center; gap: 10px; }
 /* The rail's total, muted next to the pill; gone while a filter counts matches. */
-#nested-children .nestedStarList-alltotal { font-size: 12px; color: var(--fgColor-muted, #59636e); }
+#nested-children .nestedStarList-alltotal { font-size: 12px; color: var(--nsl-muted); }
 #nested-children .nestedStarList-alltotal:empty { display: none; }
 .nestedStarList-controls { display: inline-flex; gap: 4px; }
 /* The fallback spot, when no heading was found: a slim row atop the box. */
@@ -255,11 +302,11 @@ details[data-nested-star-list-parent] > details:last-child > summary::before {
 .nestedStarList-foldall span { font-size: 12px; font-weight: 400; }
 .nestedStarList-foldall {
   flex: none; border: 0; background: none; padding: 4px; border-radius: 4px;
-  cursor: pointer; color: var(--fgColor-muted, #59636e);
+  cursor: pointer; color: var(--nsl-muted);
 }
 .nestedStarList-foldall:hover {
-  background: var(--bgColor-neutral-muted, #6e768118);
-  color: var(--fgColor-default, #1f2328);
+  background: var(--nsl-bg-neutral);
+  color: var(--nsl-fg);
 }
 .nestedStarList-foldall svg { display: block; width: 14px; height: 14px; fill: currentColor; }
 
@@ -268,8 +315,9 @@ details[data-nested-star-list-parent] > details:last-child > summary::before {
 details[data-nested-star-list-parent] > a.Box-row h3::before,
 #nested-children details[data-nested-star-list-parent] > a .nestedStarList-name::before {
   content: ''; position: absolute; top: 50%; transform: translateY(-50%);
-  width: 16px; height: 16px; opacity: .7;
-  background: var(--nsl-list-icon) no-repeat center / 14px 14px;
+  width: 16px; height: 16px; opacity: .7; background-color: var(--nsl-muted);
+  -webkit-mask: var(--nsl-list-icon) no-repeat center / 14px 14px;
+  mask: var(--nsl-list-icon) no-repeat center / 14px 14px;
 }
 details[data-nested-star-list-parent] > a.Box-row h3::before { left: 34px; }
 #nested-children details[data-nested-star-list-parent] > a .nestedStarList-name::before {
@@ -286,8 +334,8 @@ details[data-nested-star-list-parent] > a.Box-row h3::before { left: 34px; }
 .nestedStarList-more {
   display: block; width: 100%; padding: 10px 16px; border: 0;
   background: none; cursor: pointer; font-size: 12px; text-align: center;
-  color: var(--fgColor-accent, #0969da);
-  border-top: 1px solid var(--borderColor-muted, #d1d9e0);
+  color: var(--nsl-accent);
+  border-top: 1px solid var(--nsl-line);
 }
 .nestedStarList-more:hover { text-decoration: underline; }
 /* The rail's rows are half the height of the page's — its fold row follows. */
@@ -297,14 +345,14 @@ details[data-nested-star-list-parent] > a.Box-row h3::before { left: 34px; }
 #nested-children .nestedStarList-foot {
   position: sticky; bottom: 0; z-index: 1;
   padding: 5px 10px; font-size: 11px; line-height: 16px;
-  border-top: 1px solid var(--borderColor-muted, #d1d9e0);
-  background: var(--bgColor-muted, #f6f8fa);
+  border-top: 1px solid var(--nsl-line);
+  background: var(--nsl-bg-muted);
 }
 #nested-children .nestedStarList-foot a {
-  color: var(--fgColor-muted, #59636e); text-decoration: none;
+  color: var(--nsl-muted); text-decoration: none;
 }
 #nested-children .nestedStarList-foot a:hover {
-  color: var(--fgColor-accent, #0969da); text-decoration: underline;
+  color: var(--nsl-accent); text-decoration: underline;
 }
 @container (max-width: 230px) { #nested-children .nestedStarList-num { display: none; } }
 
@@ -320,11 +368,11 @@ details[data-nested-star-list-parent] > a.Box-row h3::before { left: 34px; }
    off — and the elbow runs 12px right, far enough to reach what it points at. */
 .nestedStarList-indent[data-nested-star-list-line]::before {
   content: ''; position: absolute; left: 12px; top: 0; bottom: 0;
-  border-left: 1px solid var(--borderColor-muted, #d1d9e0);
+  border-left: 1px solid var(--nsl-line);
 }
 .nestedStarList-indent[data-nested-star-list-line="elbow"]::before {
   bottom: auto; height: var(--nsl-mid); width: 12px;
-  border-bottom: 1px solid var(--borderColor-muted, #d1d9e0);
+  border-bottom: 1px solid var(--nsl-line);
   border-bottom-left-radius: 6px;
 }
 /* A row with no children says so, with the same glyph the profile rows carry,
@@ -332,11 +380,13 @@ details[data-nested-star-list-parent] > a.Box-row h3::before { left: 34px; }
 .nestedStarList-leaf::before {
   content: ''; position: absolute; top: var(--nsl-mid); left: 50%;
   transform: translate(-50%, -50%); width: 14px; height: 14px; opacity: .7;
-  background: var(--nsl-list-icon) no-repeat center / 14px 14px;
+  background-color: var(--nsl-muted);
+  -webkit-mask: var(--nsl-list-icon) no-repeat center / 14px 14px;
+  mask: var(--nsl-list-icon) no-repeat center / 14px 14px;
 }
 .nestedStarList-indent[data-nested-star-list-line="tee"]::after {
   content: ''; position: absolute; left: 12px; top: var(--nsl-mid); width: 12px;
-  border-top: 1px solid var(--borderColor-muted, #d1d9e0);
+  border-top: 1px solid var(--nsl-line);
   border-bottom-left-radius: 6px;
 }
 .nestedStarList-caret[data-nested-star-list-open] .nestedStarList-closed { display: none; }
@@ -345,7 +395,7 @@ details[data-nested-star-list-parent] > a.Box-row h3::before { left: 34px; }
    since there is nothing to check on it. */
 li.nestedStarList-pick {
   display: flex; align-items: center; padding: 6px 8px; border-radius: 6px;
-  color: var(--fgColor-muted, #59636e); font-size: 14px;
+  color: var(--nsl-muted); font-size: 14px;
 }
 /* Only in the picker: a caret in a <summary> centres on its own row. */
 li > .nestedStarList-caret {
@@ -356,7 +406,7 @@ li > .nestedStarList-caret {
    sits in, and across its description when it has one. */
 li > .nestedStarList-caret[data-nested-star-list-open]::after {
   content: ''; position: absolute; left: 12px; top: calc(var(--nsl-mid) + 7px); bottom: 0;
-  border-left: 1px solid var(--borderColor-muted, #d1d9e0);
+  border-left: 1px solid var(--nsl-line);
 }
 .nestedStarList-pickcount {
   margin-left: auto; align-self: flex-start; margin-top: calc(var(--nsl-mid) - 10px);
