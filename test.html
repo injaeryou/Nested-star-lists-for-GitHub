@@ -16,6 +16,12 @@
     display: block; font-size: 12px; line-height: 16px;
   }
   #picker .checkbox { width: 16px; height: 16px; border: 1px solid; }
+  /* The Catalyst row: the whole row is one button. */
+  #picker2 .ActionListContent {
+    display: flex; align-items: center; gap: 8px; width: 100%;
+    padding: 6px 8px; font-size: 14px; line-height: 20px; background: none; border: 0;
+  }
+  #picker2 .FormControl-checkbox { width: 16px; height: 16px; border: 1px solid; }
 </style>
 
 <!-- Fixture: real GitHub stars-lists markup (anchors are direct children of
@@ -113,6 +119,50 @@
     <li tabindex="-1" role="option" aria-selected="false" data-id="list-9" data-component="ActionList.Item" data-has-description="false">
       <div data-size="medium"><span data-component="ActionList.Selection"><div class="checkbox"></div></span>
         <span data-component="ActionList.Item--DividerContainer"><span id="p9--label" data-component="ActionList.Item.Label">zzz</span></span></div></li>
+  </ul>
+</div>
+
+<!-- Fixture: the other list panel — the Catalyst <action-list> dialog a repo
+     row's star button opens (trending, the feed, the stars tab). Rows come in
+     the order the server sends, which is neither the tree's nor alphabetical. -->
+<div id="picker2">
+  <ul aria-label="Select lists" role="listbox" class="ActionListWrap">
+    <li data-targets="action-list.items" data-item-id="user-list-2" role="none" class="ActionListItem">
+      <button data-input-name="list_ids[]" data-value="2" type="button" role="option" aria-selected="false" class="ActionListContent" tabindex="-1">
+        <span class="ActionListItem-visual ActionListItem-action--leading"><div class="FormControl-checkbox"></div></span>
+        <span class="ActionListItem-label">test/test2</span></button></li>
+    <li data-targets="action-list.items" data-item-id="user-list-9" role="none" class="ActionListItem">
+      <button data-input-name="list_ids[]" data-value="9" type="button" role="option" aria-selected="false" class="ActionListContent" tabindex="-1">
+        <span class="ActionListItem-visual ActionListItem-action--leading"><div class="FormControl-checkbox"></div></span>
+        <span class="ActionListItem-label">zzz</span></button></li>
+    <li data-targets="action-list.items" data-item-id="user-list-3" role="none" class="ActionListItem">
+      <button data-input-name="list_ids[]" data-value="3" type="button" role="option" aria-selected="false" class="ActionListContent" tabindex="-1">
+        <span class="ActionListItem-visual ActionListItem-action--leading"><div class="FormControl-checkbox"></div></span>
+        <span class="ActionListItem-label">testtest</span></button></li>
+    <li data-targets="action-list.items" data-item-id="user-list-8" role="none" class="ActionListItem">
+      <button data-input-name="list_ids[]" data-value="8" type="button" role="option" aria-selected="false" class="ActionListContent" tabindex="-1">
+        <span class="ActionListItem-visual ActionListItem-action--leading"><div class="FormControl-checkbox"></div></span>
+        <span class="ActionListItem-label">Infra/gcp</span></button></li>
+    <li data-targets="action-list.items" data-item-id="user-list-6" role="none" class="ActionListItem">
+      <button data-input-name="list_ids[]" data-value="6" type="button" role="option" aria-selected="false" class="ActionListContent" tabindex="-1">
+        <span class="ActionListItem-visual ActionListItem-action--leading"><div class="FormControl-checkbox"></div></span>
+        <span class="ActionListItem-label">testtest/sub2</span></button></li>
+    <li data-targets="action-list.items" data-item-id="user-list-5" role="none" class="ActionListItem">
+      <button data-input-name="list_ids[]" data-value="5" type="button" role="option" aria-selected="false" class="ActionListContent" tabindex="-1">
+        <span class="ActionListItem-visual ActionListItem-action--leading"><div class="FormControl-checkbox"></div></span>
+        <span class="ActionListItem-label">testtest/sub1/subsub1</span></button></li>
+    <li data-targets="action-list.items" data-item-id="user-list-7" role="none" class="ActionListItem">
+      <button data-input-name="list_ids[]" data-value="7" type="button" role="option" aria-selected="false" class="ActionListContent" tabindex="-1">
+        <span class="ActionListItem-visual ActionListItem-action--leading"><div class="FormControl-checkbox"></div></span>
+        <span class="ActionListItem-label">Infra/aws/eks</span></button></li>
+    <li data-targets="action-list.items" data-item-id="user-list-4" role="none" class="ActionListItem">
+      <button data-input-name="list_ids[]" data-value="4" type="button" role="option" aria-selected="false" class="ActionListContent" tabindex="-1">
+        <span class="ActionListItem-visual ActionListItem-action--leading"><div class="FormControl-checkbox"></div></span>
+        <span class="ActionListItem-label">testtest/sub1</span></button></li>
+    <li data-targets="action-list.items" data-item-id="user-list-1" role="none" class="ActionListItem">
+      <button data-input-name="list_ids[]" data-value="1" type="button" role="option" aria-selected="false" class="ActionListContent" tabindex="-1">
+        <span class="ActionListItem-visual ActionListItem-action--leading"><div class="FormControl-checkbox"></div></span>
+        <span class="ActionListItem-label">test</span></button></li>
   </ul>
 </div>
 
@@ -738,6 +788,64 @@ setTimeout(() => {
   check('closing a folder leaves the branch beside it intact',
     !shown(pick(7)) && plines(awsRow) === 'tee' && plines(pick(8)) === 'elbow,-');
   pcaret(awsRow).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+  // The other panel: the Catalyst dialog, whose rows GitHub does not sort and
+  // does not own the way React owns the first one's.
+  const p2 = document.querySelector('#picker2 ul');
+  const p2rows = () => [...p2.children].map(li =>
+    li.dataset.nestedStarListFolder ? `[${li.dataset.nestedStarListFolder}]` :
+      li.querySelector('.ActionListItem-label').firstChild.data.trim());
+  check('the Catalyst panel is sorted into tree order',
+    p2rows().join(' ') ===
+      '[Infra] [Infra/aws] eks gcp test test2 testtest sub1 subsub1 sub2 zzz');
+  check('its rows keep their own markup',
+    [...p2.querySelectorAll('li.ActionListItem')].every(li =>
+      li.querySelector(':scope > button.ActionListContent[role="option"]')));
+  const p2li = n => p2.querySelector(`li[data-item-id="user-list-${n}"]`);
+  check('the Catalyst panel gets the same tree',
+    !!p2li(3).querySelector(`:scope > .nestedStarList-caret`) &&
+    !!p2li(5).querySelector(':scope > .nestedStarList-leaf') &&
+    [...p2li(5).querySelectorAll(':scope > .nestedStarList-indent')]
+      .map(c => c.dataset.nestedStarListLine || '-').join(',') === 'through,elbow,-');
+  // A sort that ran again on every pass would call the observer forever.
+  const p2obs = new MutationObserver(() => {});
+  p2obs.observe(p2, { childList: true, subtree: true, characterData: true, attributes: true });
+  api.nestPicker();
+  const p2quiet = p2obs.takeRecords().length === 0;
+  p2obs.disconnect();
+  check('a settled Catalyst panel re-run writes nothing', p2quiet);
+  // Folding is shared state: the same folder, closed once, is closed in both.
+  p2li(3).querySelector('.nestedStarList-caret')
+    .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  check('closing a folder closes it in the other panel too',
+    !shown(p2li(4)) && !shown(pick(4)));
+  p2li(3).querySelector('.nestedStarList-caret')
+    .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  check('and opening it opens both', shown(p2li(4)) && shown(pick(4)));
+
+  // A trending page carries a panel per repo. Each is its own tree, and none
+  // may reach into another.
+  const p3 = document.createElement('ul');
+  p3.setAttribute('role', 'listbox');
+  p3.className = 'ActionListWrap';
+  p3.innerHTML = ['b/2', 'a', 'b/1', 'b'].map((n, i) =>
+    `<li data-item-id="user-list-9${i}" role="none" class="ActionListItem">` +
+    `<button data-value="9${i}" type="button" role="option" class="ActionListContent">` +
+    `<span class="ActionListItem-label">${n}</span></button></li>`).join('');
+  document.getElementById('picker2').append(p3);
+  api.nestPicker();
+  check('a second panel is a tree of its own',
+    [...p3.children].map(li => li.querySelector('.ActionListItem-label').firstChild.data.trim())
+      .join(' ') === 'a b 1 2' && p2.children.length === 11);
+
+  // The React panel's order is GitHub's. Sorting it would move rows out from
+  // under the reconciler, so ours must leave it exactly as it found it.
+  const zzz = pick(9);
+  pul.prepend(zzz);
+  api.nestPicker();
+  check('the React panel is never reordered', pul.firstElementChild === zzz);
+  pul.append(zzz);
+  api.nestPicker();
 
   // The observer calls nestPicker() on every DOM change, so a settled panel
   // must take no writes at all — text included.

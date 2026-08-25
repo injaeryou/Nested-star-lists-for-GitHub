@@ -3,14 +3,34 @@
   const { MARK, parts, nameNode, rename, mutedTag,
           folderIcon, FOLDER_CLOSED, FOLDER_OPEN } = globalThis.__nsl;
 
-  // The star button's "Add this repository to a list" panel. Its rows are
-  // options, not links, so nest() never sees them — and they must not be moved
-  // out of GitHub's <ul> (see CLAUDE.md). The tree is drawn in place instead:
-  // an indent slot and a caret inside the row GitHub rendered, and a row of our
-  // own for a folder that has no list of its own.
-  const ROW = 'ul[data-component="ActionList"] > li[data-id^="list-"]';
-  const LABEL = '[data-component="ActionList.Item.Label"]';
-  const FILTER = 'input[aria-label="Filter lists"]';
+  // The star button's "Add this repository to a list" panel — of which GitHub
+  // ships two. On a repo page it is Primer's React SelectPanel; everywhere a
+  // repo *row* has a star button (trending, the feed, the stars tab) it is the
+  // Catalyst <action-list> dialog. Same lists, different markup, and only one
+  // of them objects to having its rows moved.
+  const PANELS = [
+    {
+      row: 'li[data-id^="list-"]',
+      label: '[data-component="ActionList.Item.Label"]',
+      id: li => li.dataset.id,
+      // React re-renders the whole <ul> on every keystroke in its own filter,
+      // so a row moved out from under it breaks the reconciler. It does not
+      // need moving: that panel already comes sorted by full name.
+      sort: false,
+      filter: ul => ul.closest('[data-component="SelectPanel"]')
+        ?.querySelector('input[aria-label="Filter lists"]'),
+    },
+    {
+      row: 'li.ActionListItem[data-item-id^="user-list-"]',
+      label: '.ActionListItem-label',
+      id: li => li.dataset.itemId,
+      // Server order, which is neither the tree's nor alphabetical — and
+      // nothing here owns the rows, so they are ours to sort. No filter box.
+      sort: true,
+      filter: () => null,
+    },
+  ];
+
   const STEP = 16;     // one indent level
   const CARET = 24;    // the caret slot, left empty on a row with no children
   const FOLDER = MARK + 'Folder';
@@ -34,7 +54,7 @@
     c.append(folderIcon(`${MARK}-closed`, FOLDER_CLOSED),
              folderIcon(`${MARK}-open`, FOLDER_OPEN));
     // Capture and stop it dead: the row underneath is a checkbox option, and
-    // React listens on the panel root, so an escaping click would tick it.
+    // the panel listens on its own root, so an escaping click would tick it.
     // The path is read from the element, not closed over — a re-rendered row
     // can be holding a different list by the time this fires.
     for (const type of ['pointerdown', 'mousedown', 'click'])
@@ -47,6 +67,17 @@
         nestPicker();
       }, true);
     return c;
+  };
+
+  // Tree order, compared a segment at a time: a parent lands above its own
+  // children whatever "/" is worth in the locale's collation.
+  const cmp = (a, b) => {
+    const x = parts(a), y = parts(b);
+    for (let i = 0; i < Math.min(x.length, y.length); i++) {
+      const c = x[i].toLowerCase().localeCompare(y[i].toLowerCase());
+      if (c) return c;
+    }
+    return x.length - y.length;
   };
 
   const folderRow = path => {
@@ -97,26 +128,52 @@
   };
 
   const nestPicker = () => {
-    const rows = [...document.querySelectorAll(ROW)];
+    for (const kind of PANELS) {
+      const rows = document.querySelectorAll(kind.row);
+      // One page can hold many panels — a trending page has two per repo — and
+      // each is its own tree, so they are drawn one <ul> at a time.
+      for (const ul of new Set([...rows].map(li => li.parentElement))) draw(ul, kind);
+    }
+  };
+
+  const draw = (ul, kind) => {
+    let rows = [...ul.children].filter(c => c.matches(kind.row));
     if (!rows.length) return;
 
     // Read the whole panel first: only the full set of names tells a folder
     // from a leaf.
-    const entries = rows.map(li => {
-      const label = li.querySelector(LABEL);
+    let entries = rows.map(li => {
+      const label = li.querySelector(kind.label);
       const node = label && nameNode(label);
       if (!node) return null;
       const txt = node.data.trim();
       // A slash means this is the name as GitHub rendered it — first paint, or
       // a re-render that undid the shortening. Otherwise the row is one this
       // already shortened, and the memo holds what it really is.
-      const full = txt.includes('/') ? txt : (nameById.get(li.dataset.id) || txt);
-      nameById.set(li.dataset.id, full);
-      return { el: li, content: li.querySelector(':scope > div') || li, path: full, label };
+      const full = txt.includes('/') ? txt : (nameById.get(kind.id(li)) || txt);
+      nameById.set(kind.id(li), full);
+      // The row's own content, whatever GitHub built it out of — everything
+      // else under the <li> is ours.
+      const content = [...li.children]
+        .find(c => ![...c.classList].some(n => n.startsWith(MARK))) || li;
+      return { el: li, content, path: full, label };
     }).filter(Boolean);
 
     const all = entries.map(e => e.path);
     if (!all.some(n => n.includes('/'))) return;   // nothing nests: hands off
+
+    // Tree order first, where the panel does not come in it. Write-guarded, or
+    // the observer would see a move on every pass and call us forever.
+    if (kind.sort) {
+      const want = [...entries].sort((a, b) => cmp(a.path, b.path));
+      if (want.some((e, i) => e !== entries[i])) {
+        const mark = document.createComment(MARK);
+        ul.insertBefore(mark, entries[0].el);
+        for (const e of want) ul.insertBefore(e.el, mark);
+        mark.remove();
+        entries = want;
+      }
+    }
 
     // Every path in the panel, including the folders no list is named after.
     const nodes = new Set(all);
@@ -130,7 +187,7 @@
 
     // While GitHub's own filter runs, a closed folder would hide its own
     // matches — so a search sees everything, exactly like the rail's filter.
-    const filtering = !!document.querySelector(FILTER)?.value.trim();
+    const filtering = !!kind.filter(ul)?.value.trim();
     const buried = path => !filtering &&
       parts(path).slice(0, -1).some((_, i, a) => shut.has(a.slice(0, i + 1).join('/')));
 
@@ -156,7 +213,7 @@
     // GitHub's filter takes rows out of the <ul> and puts them back, so a
     // folder can lose the list it was named after and get it back. A row of
     // ours that is no longer wanted is ours to remove — nothing else will.
-    for (const c of [...rows[0].parentElement.children])
+    for (const c of [...ul.children])
       if (c.dataset[FOLDER] && !placed.has(c.dataset[FOLDER])) c.remove();
 
     // The last row under each folder, so a branch knows where to stop: rows
