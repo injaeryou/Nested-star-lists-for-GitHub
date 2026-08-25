@@ -14,6 +14,7 @@
   const STEP = 16;     // one indent level
   const CARET = 24;    // the caret slot, left empty on a row with no children
   const FOLDER = MARK + 'Folder';
+  const LINE = MARK + 'Line';
   const OPEN = MARK + 'Open';
 
   // Keyed by the row's own data-id: the panel re-renders on every keystroke in
@@ -64,16 +65,35 @@
 
   // Indent without touching the row's own box: Primer owns the padding on both
   // the row and its content, and overwriting it would move GitHub's layout.
-  const slot = (host, w) => {
-    let s = [...host.children].find(c => c.classList.contains(`${MARK}-indent`));
-    if (!s) {
-      s = document.createElement('span');
+  // One cell per level, so each can carry the guide line of the ancestor it
+  // sits under — and a leaf gets one more, the width of the caret it has not
+  // got, so names at the same depth line up either way.
+  const slots = (host, kinds, tail) => {
+    const want = kinds.length + (tail ? 1 : 0);
+    const cells = [...host.children].filter(c => c.classList.contains(`${MARK}-indent`));
+    while (cells.length > want) cells.pop().remove();
+    while (cells.length < want) {
+      const s = document.createElement('span');
       s.className = `${MARK}-indent`;
       s.setAttribute('aria-hidden', 'true');
+      cells.push(s);
     }
-    if (s.style.width !== `${w}px`) s.style.width = `${w}px`;
-    if (host.firstElementChild !== s) host.prepend(s);
-    return s;
+    cells.forEach((s, i) => {
+      const w = i < kinds.length ? STEP : tail;
+      if (s.style.width !== `${w}px`) s.style.width = `${w}px`;
+      const kind = kinds[i] || '';
+      if ((s.dataset[LINE] || '') !== kind) {
+        if (kind) s.dataset[LINE] = kind; else delete s.dataset[LINE];
+      }
+      // The cell a leaf spends on the caret it has not got carries the list
+      // glyph — the stylesheet's, the same one the profile rows use. A cell can
+      // change hands when a row is re-rendered at another depth, so the class
+      // is put on and taken off, never assumed.
+      s.classList.toggle(`${MARK}-leaf`, i >= kinds.length);
+      if (i === 0) { if (host.firstElementChild !== s) host.prepend(s); }
+      else if (cells[i - 1].nextElementSibling !== s) cells[i - 1].after(s);
+    });
+    return cells.at(-1) || null;
   };
 
   const nestPicker = () => {
@@ -139,7 +159,15 @@
     for (const c of [...rows[0].parentElement.children])
       if (c.dataset[FOLDER] && !placed.has(c.dataset[FOLDER])) c.remove();
 
-    for (const { el, content, path, label } of drawn) {
+    // The last row under each folder, so a branch knows where to stop: rows
+    // are in tree order, so the latest index wins.
+    const lastUnder = new Map();
+    drawn.forEach(({ path }, i) => {
+      const seg = parts(path);
+      for (let j = 1; j < seg.length; j++) lastUnder.set(seg.slice(0, j).join('/'), i);
+    });
+
+    drawn.forEach(({ el, content, path, label }, i) => {
       if (label) {
         const node = nameNode(label);
         // A re-render can put the full name back with our muted path still
@@ -163,14 +191,22 @@
         }
       }
       const folder = kids.has(path);
-      const s = slot(el, (parts(path).length - 1) * STEP + (folder ? 0 : CARET));
+      // "│" while the ancestor that cell stands for still has rows below,
+      // "├"/"└" on the parent's own cell, nothing once the branch is done.
+      const seg = parts(path);
+      const kinds = seg.slice(0, -1).map((_, j) => {
+        const on = lastUnder.get(seg.slice(0, j + 1).join('/')) > i;
+        return j === seg.length - 2 ? (on ? 'tee' : 'elbow') : (on ? 'through' : '');
+      });
+      const s = slots(el, kinds, folder ? 0 : CARET);
       if (folder) {
         let c = [...el.children].find(x => x.classList.contains(`${MARK}-caret`)) || caret();
         if (c.dataset[FOLDER] !== path) c.dataset[FOLDER] = path;
         const open = filtering || !shut.has(path);
         if (open && c.dataset[OPEN] === undefined) c.dataset[OPEN] = '';
         if (!open && c.dataset[OPEN] !== undefined) delete c.dataset[OPEN];
-        if (s.nextElementSibling !== c) s.after(c);
+        if (s ? s.nextElementSibling !== c : el.firstElementChild !== c)
+          s ? s.after(c) : el.prepend(c);
         // A closed folder still says how much it is holding.
         let n = [...el.children].find(x => x.classList.contains(`${MARK}-pickcount`));
         if (!n) {
@@ -183,7 +219,7 @@
       }
       const off = buried(path) ? 'none' : (own ? '' : 'flex');
       if (el.style.display !== off) el.style.display = off;
-    }
+    });
   };
 
   Object.assign(globalThis.__nsl, { nestPicker });

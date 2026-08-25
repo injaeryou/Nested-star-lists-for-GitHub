@@ -293,8 +293,36 @@ details[data-nested-star-list-parent] > a.Box-row h3::before { left: 34px; }
 @container (max-width: 230px) { #nested-children .nestedStarList-num { display: none; } }
 
 /* The star button's list picker. React owns those rows, so the tree is drawn
-   inside them: an indent slot, then the same caret the folders use. */
-.nestedStarList-indent { flex: none; align-self: stretch; }
+   inside them: an indent slot, then the same caret the folders use.
+   A row with a description is two lines tall, but the tree reads down the
+   first line — so the icons and the elbow sit half a one-line row from the
+   top (Primer's medium row is 32px), not half the row. */
+:root { --nsl-mid: 16px; }
+.nestedStarList-indent { flex: none; align-self: stretch; position: relative; }
+/* The guide line of the ancestor a cell stands for. 11px puts it under the
+   caret of the row above (a caret slot is 24px wide, centred at 12px), and the
+   elbow runs 13px right, far enough to reach under what it points at. */
+.nestedStarList-indent[data-nested-star-list-line]::before {
+  content: ''; position: absolute; left: 11px; top: 0; bottom: 0;
+  border-left: 1px solid var(--borderColor-muted, #d1d9e0);
+}
+.nestedStarList-indent[data-nested-star-list-line="elbow"]::before {
+  bottom: auto; height: var(--nsl-mid); width: 13px;
+  border-bottom: 1px solid var(--borderColor-muted, #d1d9e0);
+  border-bottom-left-radius: 6px;
+}
+/* A row with no children says so, with the same glyph the profile rows carry,
+   in the column the folders spend on their caret. */
+.nestedStarList-leaf::before {
+  content: ''; position: absolute; top: var(--nsl-mid); left: 50%;
+  transform: translate(-50%, -50%); width: 14px; height: 14px; opacity: .7;
+  background: var(--nsl-list-icon) no-repeat center / 14px 14px;
+}
+.nestedStarList-indent[data-nested-star-list-line="tee"]::after {
+  content: ''; position: absolute; left: 11px; top: var(--nsl-mid); width: 13px;
+  border-top: 1px solid var(--borderColor-muted, #d1d9e0);
+  border-bottom-left-radius: 6px;
+}
 .nestedStarList-caret[data-nested-star-list-open] .nestedStarList-closed { display: none; }
 .nestedStarList-caret[data-nested-star-list-open] .nestedStarList-open { display: block; }
 /* A folder no list is named after gets a row of ours between GitHub's — muted,
@@ -303,4 +331,17 @@ li.nestedStarList-pick {
   display: flex; align-items: center; padding: 6px 8px; border-radius: 6px;
   color: var(--fgColor-muted, #59636e); font-size: 14px;
 }
-.nestedStarList-pickcount { margin-left: auto; }
+/* Only in the picker: a caret in a <summary> centres on its own row. */
+li > .nestedStarList-caret {
+  align-items: flex-start; padding-top: calc(var(--nsl-mid) - 7px); position: relative;
+}
+/* An open folder carries the line the rest of the way down its own row — from
+   under its icon to the bottom — or the branch breaks across the half row it
+   sits in, and across its description when it has one. */
+li > .nestedStarList-caret[data-nested-star-list-open]::after {
+  content: ''; position: absolute; left: 11px; top: calc(var(--nsl-mid) + 7px); bottom: 0;
+  border-left: 1px solid var(--borderColor-muted, #d1d9e0);
+}
+.nestedStarList-pickcount {
+  margin-left: auto; align-self: flex-start; margin-top: calc(var(--nsl-mid) - 10px);
+}
