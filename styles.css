@@ -65,7 +65,7 @@ details[data-nested-star-list-parent] .Box-row { border-top: 0; }
 #profile-lists-container .Box
   > :is(details[data-nested-star-list-parent], a[href*="/lists/"])
   ~ :is(details[data-nested-star-list-parent], a[href*="/lists/"]) {
-  border-top: 1px solid var(--borderColor-muted, #30363d);
+  border-top: 1px solid var(--borderColor-muted, #d1d9e0);
 }
 
 /* Folder-tree guides: a stem down the group, an elbow into each child. They sit
@@ -75,12 +75,19 @@ details[data-nested-star-list-parent] > :not(summary) { position: relative; }
 details[data-nested-star-list-parent] > :not(summary)::before {
   /* 12px = the centre of the parent's folder icon, so the stem hangs off it. */
   content: ''; position: absolute; left: 12px; top: 0; bottom: 0; z-index: 1;
-  border-left: 1px solid var(--borderColor-muted, #30363d);
+  border-left: 1px solid var(--borderColor-muted, #d1d9e0);
 }
-details[data-nested-star-list-parent] > :not(summary):last-child::before { bottom: 50%; }
+/* The last child's stem and elbow are one box, not two lines meeting at a
+   point: a corner can only be rounded if something owns it. */
+details[data-nested-star-list-parent] > :not(summary):last-child::before {
+  bottom: auto; height: 50%; width: 18px;
+  border-bottom: 1px solid var(--borderColor-muted, #d1d9e0);
+  border-bottom-left-radius: 6px;
+}
+details[data-nested-star-list-parent] > :not(summary):last-child::after { content: none; }
 details[data-nested-star-list-parent] > :not(summary)::after {
   content: ''; position: absolute; left: 12px; top: 50%; width: 18px; z-index: 1;
-  border-top: 1px solid var(--borderColor-muted, #30363d);
+  border-top: 1px solid var(--borderColor-muted, #d1d9e0);
 }
 /* A folder child is as tall as its whole subtree, so hanging its connector off
    the box middle points at the wrong row. Draw it on its own header instead. */
@@ -89,11 +96,14 @@ details[data-nested-star-list-parent] > details:last-child::before { content: no
 details[data-nested-star-list-parent] > details > summary { position: relative; }
 details[data-nested-star-list-parent] > details > summary::after {
   content: ''; position: absolute; left: -16px; top: 50%; width: 16px; z-index: 1;
-  border-top: 1px solid var(--borderColor-muted, #30363d);
+  border-top: 1px solid var(--borderColor-muted, #d1d9e0);
 }
+details[data-nested-star-list-parent] > details:last-child > summary::after { content: none; }
 details[data-nested-star-list-parent] > details:last-child > summary::before {
-  content: ''; position: absolute; left: -16px; top: 0; height: 50%; z-index: 1;
-  border-left: 1px solid var(--borderColor-muted, #30363d);
+  content: ''; position: absolute; left: -16px; top: 0; height: 50%; width: 16px; z-index: 1;
+  border-left: 1px solid var(--borderColor-muted, #d1d9e0);
+  border-bottom: 1px solid var(--borderColor-muted, #d1d9e0);
+  border-bottom-left-radius: 6px;
 }
 
 /* Repositories left, lists right, pinned so they stay reachable while the
@@ -143,14 +153,20 @@ details[data-nested-star-list-parent] > details:last-child > summary::before {
    still lands on the parent's folder icon, the elbows are just shorter. Rows
    carry a 4px horizontal margin that folders do not, so their guides shift 4px
    left to land on the same column — otherwise the stem breaks at every folder. */
-#nested-children details[data-nested-star-list-parent] > :not(summary)::after { width: 12px; }
+#nested-children details[data-nested-star-list-parent] > :not(summary)::after,
+#nested-children details[data-nested-star-list-parent] > :not(summary):last-child::before {
+  width: 12px;
+}
 #nested-children details[data-nested-star-list-parent] > a::before,
 #nested-children details[data-nested-star-list-parent] > a::after { left: 8px; }
 #nested-children details[data-nested-star-list-parent] > details > summary::after,
 #nested-children details[data-nested-star-list-parent] > details:last-child > summary::before {
   left: -4px;
 }
-#nested-children details[data-nested-star-list-parent] > details > summary::after { width: 8px; }
+#nested-children details[data-nested-star-list-parent] > details > summary::after,
+#nested-children details[data-nested-star-list-parent] > details:last-child > summary::before {
+  width: 8px;
+}
 /* Inside a summary the row loses its horizontal margin, so promoted folder
    names sit on the same column as virtual folder labels. */
 #nested-children summary .nestedStarList-row { margin: 0 4px 0 0; }
@@ -271,7 +287,7 @@ details[data-nested-star-list-parent] > a.Box-row h3::before { left: 34px; }
   display: block; width: 100%; padding: 10px 16px; border: 0;
   background: none; cursor: pointer; font-size: 12px; text-align: center;
   color: var(--fgColor-accent, #0969da);
-  border-top: 1px solid var(--borderColor-muted, #30363d);
+  border-top: 1px solid var(--borderColor-muted, #d1d9e0);
 }
 .nestedStarList-more:hover { text-decoration: underline; }
 /* The rail's rows are half the height of the page's — its fold row follows. */
@@ -299,15 +315,15 @@ details[data-nested-star-list-parent] > a.Box-row h3::before { left: 34px; }
    top (Primer's medium row is 32px), not half the row. */
 :root { --nsl-mid: 16px; }
 .nestedStarList-indent { flex: none; align-self: stretch; position: relative; }
-/* The guide line of the ancestor a cell stands for. 11px puts it under the
-   caret of the row above (a caret slot is 24px wide, centred at 12px), and the
-   elbow runs 13px right, far enough to reach under what it points at. */
+/* The guide line of the ancestor a cell stands for. 12px is the centre of that
+   row's folder icon — the same column the page and the rail hang their stems
+   off — and the elbow runs 12px right, far enough to reach what it points at. */
 .nestedStarList-indent[data-nested-star-list-line]::before {
-  content: ''; position: absolute; left: 11px; top: 0; bottom: 0;
+  content: ''; position: absolute; left: 12px; top: 0; bottom: 0;
   border-left: 1px solid var(--borderColor-muted, #d1d9e0);
 }
 .nestedStarList-indent[data-nested-star-list-line="elbow"]::before {
-  bottom: auto; height: var(--nsl-mid); width: 13px;
+  bottom: auto; height: var(--nsl-mid); width: 12px;
   border-bottom: 1px solid var(--borderColor-muted, #d1d9e0);
   border-bottom-left-radius: 6px;
 }
@@ -319,7 +335,7 @@ details[data-nested-star-list-parent] > a.Box-row h3::before { left: 34px; }
   background: var(--nsl-list-icon) no-repeat center / 14px 14px;
 }
 .nestedStarList-indent[data-nested-star-list-line="tee"]::after {
-  content: ''; position: absolute; left: 11px; top: var(--nsl-mid); width: 13px;
+  content: ''; position: absolute; left: 12px; top: var(--nsl-mid); width: 12px;
   border-top: 1px solid var(--borderColor-muted, #d1d9e0);
   border-bottom-left-radius: 6px;
 }
@@ -339,7 +355,7 @@ li > .nestedStarList-caret {
    under its icon to the bottom — or the branch breaks across the half row it
    sits in, and across its description when it has one. */
 li > .nestedStarList-caret[data-nested-star-list-open]::after {
-  content: ''; position: absolute; left: 11px; top: calc(var(--nsl-mid) + 7px); bottom: 0;
+  content: ''; position: absolute; left: 12px; top: calc(var(--nsl-mid) + 7px); bottom: 0;
   border-left: 1px solid var(--borderColor-muted, #d1d9e0);
 }
 .nestedStarList-pickcount {

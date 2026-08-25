@@ -318,6 +318,19 @@ setTimeout(() => {
   check('stem runs the full height of a middle child', Math.abs(stemRatio(rows[0]) - 1) < 0.1);
   check('stem stops half-way on the last child',
     Math.abs(stemRatio([...ai.children].at(-1)) - 0.5) < 0.1);
+  // Two 1px lines meeting at a point cannot be rounded — the last child's stem
+  // and elbow have to be one box, the way the picker draws them.
+  const lastKid = [...ai.children].at(-1);
+  check('the last child owns its corner',
+    stem(lastKid).borderBottomWidth === '1px' &&
+    stem(lastKid).borderBottomLeftRadius === '6px' &&
+    getComputedStyle(lastKid, '::after').content === 'none');
+  // Queried, not reused from above: this check sits ahead of those bindings.
+  const lastFolder = box.querySelector(
+    'details[data-nested-star-list-parent] > details:last-child > summary');
+  check('a last-child folder rounds the same corner',
+    stem(lastFolder).borderBottomLeftRadius === '6px' &&
+    getComputedStyle(lastFolder, '::after').content === 'none');
 
   // A virtual folder (no list of its own) still shows its path and a full row.
   const aws = infra.querySelector(':scope > details');
@@ -723,6 +736,15 @@ setTimeout(() => {
   const pcell = (el, i) => el.querySelectorAll(':scope > .nestedStarList-indent')[i];
   check('an open folder carries the line down its own row',
     getComputedStyle(pcaret(pick(4)), '::after').borderLeftWidth === '1px');
+  // One tree, four surfaces: the guides hang off the same column and are drawn
+  // in the same colour wherever they are.
+  check('the picker hangs its guides off the same column as the page',
+    getComputedStyle(pcell(pick(5), 1), '::before').left ===
+      getComputedStyle(rows[0], '::before').left);
+  check('every guide is drawn in one colour',
+    new Set([rows[0], pcell(pick(5), 1)].map(el =>
+      getComputedStyle(el, '::before').borderLeftColor)
+      .concat(getComputedStyle(pcaret(pick(4)), '::after').borderLeftColor)).size === 1);
   check('and hands it to its children at the same x',
     Math.abs(rect(pcaret(pick(4))).left - rect(pcell(pick(5), 1)).left) <= 0.5);
 
