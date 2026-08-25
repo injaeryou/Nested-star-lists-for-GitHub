@@ -291,3 +291,16 @@ details[data-nested-star-list-parent] > a.Box-row h3::before { left: 34px; }
   color: var(--fgColor-accent, #0969da); text-decoration: underline;
 }
 @container (max-width: 230px) { #nested-children .nestedStarList-num { display: none; } }
+
+/* The star button's list picker. React owns those rows, so the tree is drawn
+   inside them: an indent slot, then the same caret the folders use. */
+.nestedStarList-indent { flex: none; align-self: stretch; }
+.nestedStarList-caret[data-nested-star-list-open] .nestedStarList-closed { display: none; }
+.nestedStarList-caret[data-nested-star-list-open] .nestedStarList-open { display: block; }
+/* A folder no list is named after gets a row of ours between GitHub's — muted,
+   since there is nothing to check on it. */
+li.nestedStarList-pick {
+  display: flex; align-items: center; padding: 6px 8px; border-radius: 6px;
+  color: var(--fgColor-muted, #59636e); font-size: 14px;
+}
+.nestedStarList-pickcount { margin-left: auto; }

@@ -29,6 +29,29 @@ list's page.
 - **Anything the MutationObserver writes must be idempotent.** The observer calls
   `tick()` on every DOM change, so a write that always happens re-triggers itself
   forever. Compare before you touch (see `sortTree`, `countBadge`, `truncate`).
+- **The star button's list panel is React; never reparent its rows.** The
+  "Add this repository to a list" picker is a Primer `SelectPanel`: a
+  `ul[role=listbox]` of `li[role=option]` with roving `aria-activedescendant`,
+  re-rendered whole on every keystroke in its own filter. Moving a row into a
+  `<details>` fights the reconciler — the next render calls `insertBefore`
+  against a node that is no longer its child — so `picker.js` draws the tree
+  *inside* the rows GitHub rendered: an indent slot, a caret, and
+  `display:none` on what a closed folder holds. Inserting rows of our own is
+  safe (React only ever removes nodes it created), reparenting is not.
+  Its rows carry `data-id="list-<id>"`, which is what the name memo is keyed
+  on — a re-render reuses a `<li>` for a different list. The hashed `prc-*`
+  class names change every build and nothing may key off them.
+- **A Primer row is a CSS grid, so nothing of ours goes inside it.** Anything
+  appended to `ActionListContent` auto-places into a cell of its own: the
+  caret lands under the checkbox, the count wraps onto its own line. The
+  caret, the indent slot and the count hang off the `<li>` instead, which
+  `picker.js` lays out as a flex line with GitHub's row as the stretchy
+  middle. `test.html` mirrors that grid — a fixture that is a plain flex row
+  proves nothing.
+- **The picker's order is GitHub's, and the tree relies on it.** The panel is
+  sorted by full name, and `/` sorts ahead of every letter, so `a/b` already
+  lands directly under `a`. Nothing is sorted or moved there; if that order
+  ever changes, indentation is the first thing to break.
 - **Chrome injects the extension stylesheet before GitHub's own.** Primer
   utilities (`.d-block`, …) carry `!important`, so a rule that ties them on
   specificity wins in Firefox but loses in Chrome. Overriding a utility takes
@@ -41,6 +64,7 @@ list's page.
 | `src/core.js` | names, folder icons, the tree (`group`, `nest`, `sortTree`, `countBadge`) |
 | `src/settings.js` | the full-path option, applied as `data-nsl-paths` on `<html>` |
 | `src/rail.js` | the list-page rail: index cache, rows, mount, filter |
+| `src/picker.js` | the star button's "Add to list" panel: in-place tree, fold state |
 | `src/boot.js` | `tick()`, the observer, the test hook |
 | `styles.css` | injected by the manifest, so rows are styled before they land |
 | `options.html`/`options.js` | the popup, also the options page |

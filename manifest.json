@@ -38,6 +38,7 @@
         "src/core.js",
         "src/settings.js",
         "src/rail.js",
+        "src/picker.js",
         "src/boot.js"
       ],
       "run_at": "document_start",
