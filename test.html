@@ -184,6 +184,12 @@ const fails = [];
 let total = 0;
 const check = (n, cond) => { total++; if (!cond) fails.push(n); };
 const text = el => el?.textContent.trim() ?? '';
+// A glyph is painted through a mask: the picture is the mask, the colour is the
+// element's own — which is how it follows the theme.
+const glyph = (el, sel) => {
+  const st = getComputedStyle(sel ? el.querySelector(sel) : el, '::before');
+  return (st.maskImage || st.webkitMaskImage || '').includes('svg') ? st.backgroundColor : '';
+};
 const box = document.querySelector('#profile-lists-container .Box');
 // The displayed name is the h3's own text node; the muted "(full/name)" tag and
 // the count badge are appended after it, so read the node rather than the h3.
@@ -318,6 +324,19 @@ setTimeout(() => {
   check('stem runs the full height of a middle child', Math.abs(stemRatio(rows[0]) - 1) < 0.1);
   check('stem stops half-way on the last child',
     Math.abs(stemRatio([...ai.children].at(-1)) - 0.5) < 0.1);
+  // Two 1px lines meeting at a point cannot be rounded — the last child's stem
+  // and elbow have to be one box, the way the picker draws them.
+  const lastKid = [...ai.children].at(-1);
+  check('the last child owns its corner',
+    stem(lastKid).borderBottomWidth === '1px' &&
+    stem(lastKid).borderBottomLeftRadius === '6px' &&
+    getComputedStyle(lastKid, '::after').content === 'none');
+  // Queried, not reused from above: this check sits ahead of those bindings.
+  const lastFolder = box.querySelector(
+    'details[data-nested-star-list-parent] > details:last-child > summary');
+  check('a last-child folder rounds the same corner',
+    stem(lastFolder).borderBottomLeftRadius === '6px' &&
+    getComputedStyle(lastFolder, '::after').content === 'none');
 
   // A virtual folder (no list of its own) still shows its path and a full row.
   const aws = infra.querySelector(':scope > details');
@@ -489,8 +508,7 @@ setTimeout(() => {
     numRight(sideBox.querySelector('summary .nestedStarList-num')) ===
     numRight(sideBox.querySelector('details > a .nestedStarList-num')));
   check('counts carry the repo glyph',
-    getComputedStyle(sideBox.querySelector('details > a .nestedStarList-num'), '::before')
-      .backgroundImage.includes('svg'));
+    !!glyph(sideBox.querySelector('details > a .nestedStarList-num')));
 
   // Content GitHub renders into the column later joins the left cell.
   const stray = document.createElement('div'); stray.id = 'stray';
@@ -521,20 +539,18 @@ setTimeout(() => {
   // A loose top-level list carries the list glyph, aligned into the icon gutter.
   const flat = box.querySelector(':scope > a[href*="/lists/"]');
   check('flat list shows a list glyph',
-    getComputedStyle(flat, '::before').backgroundImage.includes('svg') &&
-    getComputedStyle(flat).paddingLeft === '40px');
+    !!glyph(flat) && getComputedStyle(flat).paddingLeft === '40px');
   const flatRail = sideBox.querySelector(':scope > .nestedStarList-row');
   const railFolderIcon = [...sideBox.querySelectorAll(':scope > details > summary svg')]
     .map(s => s.getBoundingClientRect()).find(r => r.width > 0);
   check('flat rail row shows it too, in the folder-icon column',
-    getComputedStyle(flatRail, '::before').backgroundImage.includes('svg') &&
+    !!glyph(flatRail) &&
     Math.abs(flatRail.getBoundingClientRect().left +
       parseFloat(getComputedStyle(flatRail, '::before').left) - railFolderIcon.left) <= 1);
 
   check('nested list rows carry the glyph too',
-    getComputedStyle(ai.querySelector(':scope > a h3'), '::before').backgroundImage.includes('svg') &&
-    getComputedStyle(sideBox.querySelector('details > a .nestedStarList-name'), '::before')
-      .backgroundImage.includes('svg'));
+    !!glyph(ai, ':scope > a h3') &&
+    !!glyph(sideBox, 'details > a .nestedStarList-name'));
 
   // Past nine top-level entries, the rest fold behind a "Show all lists" row.
   const tr = document.getElementById('trunc');
@@ -691,7 +707,7 @@ setTimeout(() => {
   const picon = el => el.querySelector(':scope > .nestedStarList-leaf');
   check('a picker leaf gets a list icon',
     !!picon(pick(9)) && !!picon(pick(6)) &&
-    getComputedStyle(picon(pick(9)), '::before').backgroundImage.includes('svg'));
+    !!glyph(picon(pick(9))));
   check('a picker folder keeps its caret instead',
     !picon(pick(3)) && !!pcaret(pick(3)));
   const midX = el => { const r = rect(el); return r.left + r.width / 2; };
@@ -723,6 +739,15 @@ setTimeout(() => {
   const pcell = (el, i) => el.querySelectorAll(':scope > .nestedStarList-indent')[i];
   check('an open folder carries the line down its own row',
     getComputedStyle(pcaret(pick(4)), '::after').borderLeftWidth === '1px');
+  // One tree, four surfaces: the guides hang off the same column and are drawn
+  // in the same colour wherever they are.
+  check('the picker hangs its guides off the same column as the page',
+    getComputedStyle(pcell(pick(5), 1), '::before').left ===
+      getComputedStyle(rows[0], '::before').left);
+  check('every guide is drawn in one colour',
+    new Set([rows[0], pcell(pick(5), 1)].map(el =>
+      getComputedStyle(el, '::before').borderLeftColor)
+      .concat(getComputedStyle(pcaret(pick(4)), '::after').borderLeftColor)).size === 1);
   check('and hands it to its children at the same x',
     Math.abs(rect(pcaret(pick(4))).left - rect(pcell(pick(5), 1)).left) <= 0.5);
 
@@ -856,6 +881,27 @@ setTimeout(() => {
   const pickQuiet = pickObs.takeRecords().length === 0;
   pickObs.disconnect();
   check('a settled picker re-run writes nothing', pickQuiet);
+
+  // Theme. Primer's own tokens win wherever GitHub defines them, so the tree
+  // follows the reader's light/dark setting — which a media query cannot see.
+  // The media query is for the fallback, on a page (like this one) that defines
+  // no tokens at all.
+  const guideColor = () => getComputedStyle(rows[0], '::before').borderLeftColor;
+  const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
+  check('guides fall back to the running scheme',
+    guideColor() === (isDark ? 'rgba(61, 68, 77, 0.7)' : 'rgba(209, 217, 224, 0.7)'));
+  check('and the glyphs fall back with them',
+    glyph(flat) === (isDark ? 'rgb(145, 152, 161)' : 'rgb(89, 99, 110)'));
+  const rootStyle = document.documentElement.style;
+  rootStyle.setProperty('--borderColor-muted', 'rgb(1, 2, 3)');
+  rootStyle.setProperty('--fgColor-muted', 'rgb(4, 5, 6)');
+  check("but GitHub's tokens win wherever it sets them",
+    guideColor() === 'rgb(1, 2, 3)' &&
+    glyph(flat) === 'rgb(4, 5, 6)' &&
+    glyph(picon(pick(9))) === 'rgb(4, 5, 6)' &&
+    getComputedStyle(pcell(pick(5), 1), '::before').borderLeftColor === 'rgb(1, 2, 3)');
+  rootStyle.removeProperty('--borderColor-muted');
+  rootStyle.removeProperty('--fgColor-muted');
 
   // Re-running must not duplicate groups or re-split already-nested names.
   box.appendChild(document.createElement('a'));
