@@ -48,10 +48,17 @@ list's page.
   `picker.js` lays out as a flex line with GitHub's row as the stretchy
   middle. `test.html` mirrors that grid — a fixture that is a plain flex row
   proves nothing.
-- **The picker's order is GitHub's, and the tree relies on it.** The panel is
-  sorted by full name, and `/` sorts ahead of every letter, so `a/b` already
-  lands directly under `a`. Nothing is sorted or moved there; if that order
-  ever changes, indentation is the first thing to break.
+- **There are two list panels, and only one of them is React.** A repo page
+  opens Primer's React `SelectPanel`; everywhere a repo *row* has a star button
+  (trending, the feed, the stars tab) the same lists come up in a Catalyst
+  `<action-list>` dialog — `li.ActionListItem` > `button.ActionListContent` >
+  `.ActionListItem-label`, fetched only when the dialog is first opened. Both
+  are drawn by the one pass in `picker.js`, from the `PANELS` table. The
+  difference that matters is order: the React panel arrives sorted by full
+  name (and `/` sorts ahead of every letter, so `a/b` already lands under `a`)
+  and must **not** be reordered; the Catalyst one arrives in the server's own
+  order and is ours to sort. A page can hold many panels — trending has two
+  per repo — so the pass works one `<ul>` at a time, never across the page.
 - **Chrome injects the extension stylesheet before GitHub's own.** Primer
   utilities (`.d-block`, …) carry `!important`, so a rule that ties them on
   specificity wins in Firefox but loses in Chrome. Overriding a utility takes
@@ -64,7 +71,7 @@ list's page.
 | `src/core.js` | names, folder icons, the tree (`group`, `nest`, `sortTree`, `countBadge`) |
 | `src/settings.js` | the full-path option, applied as `data-nsl-paths` on `<html>` |
 | `src/rail.js` | the list-page rail: index cache, rows, mount, filter |
-| `src/picker.js` | the star button's "Add to list" panel: in-place tree, fold state |
+| `src/picker.js` | both star-list panels (`PANELS`): in-place tree, fold state |
 | `src/boot.js` | `tick()`, the observer, the test hook |
 | `styles.css` | injected by the manifest, so rows are styled before they land |
 | `options.html`/`options.js` | the popup, also the options page |

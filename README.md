@@ -10,7 +10,8 @@ GitHub star lists are one level deep. This browser extension (Chrome, Firefox
 and Edge, Manifest V3) reads a naming convention — `parent/child` — and draws
 your star lists as a collapsible folder tree: on the profile's stars tab, and as
 a pinned rail of every list beside a single list's page. The star button's "Add
-to list" panel gets the same tree, folded in place.
+to list" panel gets the same tree — on a repo page and anywhere a repo row
+carries a star button.
 
 Nothing is stored anywhere and no list is modified: your lists keep their real
 names, and the tree is built in the page from them.
