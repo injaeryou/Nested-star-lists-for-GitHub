@@ -1,10 +1,11 @@
 // Part of Nested star lists for GitHub. Loaded in manifest order.
 (() => {
-  const { nest, showTree, loadSettings, listColumn, adoptStrays, harvestIndex } = globalThis.__nsl;
+  const { nest, nestPicker, showTree, loadSettings, listColumn, adoptStrays, harvestIndex } = globalThis.__nsl;
 
   let seen = '';
   const tick = () => {
     nest();
+    nestPicker();
     adoptStrays();
     harvestIndex();
     // Wait for the list column: at document_start there is no body yet, and a

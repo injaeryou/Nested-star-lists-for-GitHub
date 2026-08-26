@@ -6,6 +6,16 @@
   .Box-row { padding: 8px 16px; }
   h3, span { display: inline; margin: 0; }
   #listpage { width: 1000px; }
+  /* Primer's ActionList row: the content is a grid, not a flex line. */
+  #picker li > div[data-size] {
+    display: grid; grid-template-columns: min-content 1fr; align-items: start;
+    column-gap: 8px; padding: 6px 8px; font-size: 14px; line-height: 20px;
+  }
+  /* A description is its own line, which is what makes a row two lines tall. */
+  #picker [data-component="ActionList.Description"] {
+    display: block; font-size: 12px; line-height: 16px;
+  }
+  #picker .checkbox { width: 16px; height: 16px; border: 1px solid; }
 </style>
 
 <!-- Fixture: real GitHub stars-lists markup (anchors are direct children of
@@ -70,6 +80,42 @@
   <a class="d-block Box-row" href="/stars/me/lists/t11"><div><h3>t11</h3></div></a>
 </div>
 
+<!-- Fixture: the star button's list picker, as React renders it (Primer
+     SelectPanel). Real attributes; the hashed class names are dropped, since
+     those change on every GitHub build and nothing may depend on them. -->
+<div data-component="SelectPanel" id="picker">
+  <input aria-label="Filter lists" type="text" value="">
+  <ul role="listbox" aria-multiselectable="true" data-component="ActionList" aria-label="Add this repository to a list">
+    <li tabindex="-1" role="option" aria-selected="false" data-id="list-7" data-component="ActionList.Item" data-has-description="false">
+      <div data-size="medium"><span data-component="ActionList.Selection"><div class="checkbox"></div></span>
+        <span data-component="ActionList.Item--DividerContainer"><span id="p7--label" data-component="ActionList.Item.Label">Infra/aws/eks</span></span></div></li>
+    <li tabindex="-1" role="option" aria-selected="false" data-id="list-8" data-component="ActionList.Item" data-has-description="false">
+      <div data-size="medium"><span data-component="ActionList.Selection"><div class="checkbox"></div></span>
+        <span data-component="ActionList.Item--DividerContainer"><span id="p8--label" data-component="ActionList.Item.Label">Infra/gcp</span></span></div></li>
+    <li tabindex="-1" role="option" aria-selected="false" data-id="list-1" data-component="ActionList.Item" data-has-description="false">
+      <div data-size="medium"><span data-component="ActionList.Selection"><div class="checkbox"></div></span>
+        <span data-component="ActionList.Item--DividerContainer"><span id="p1--label" data-component="ActionList.Item.Label">test</span></span></div></li>
+    <li tabindex="-1" role="option" aria-selected="false" data-id="list-2" data-component="ActionList.Item" data-has-description="false">
+      <div data-size="medium"><span data-component="ActionList.Selection"><div class="checkbox"></div></span>
+        <span data-component="ActionList.Item--DividerContainer"><span id="p2--label" data-component="ActionList.Item.Label">test/test2</span></span></div></li>
+    <li tabindex="-1" role="option" aria-selected="false" data-id="list-3" data-component="ActionList.Item" data-has-description="false">
+      <div data-size="medium"><span data-component="ActionList.Selection"><div class="checkbox"></div></span>
+        <span data-component="ActionList.Item--DividerContainer"><span id="p3--label" data-component="ActionList.Item.Label">testtest</span></span></div></li>
+    <li tabindex="-1" role="option" aria-selected="false" data-id="list-4" data-component="ActionList.Item" data-has-description="true">
+      <div data-size="medium"><span data-component="ActionList.Selection"><div class="checkbox"></div></span>
+        <span data-component="ActionList.Item--DividerContainer"><div data-description-variant="block"><span id="p4--label" data-component="ActionList.Item.Label">testtest/sub1</span><span data-component="ActionList.Description">sub1</span></div></span></div></li>
+    <li tabindex="-1" role="option" aria-selected="false" data-id="list-5" data-component="ActionList.Item" data-has-description="true">
+      <div data-size="medium"><span data-component="ActionList.Selection"><div class="checkbox"></div></span>
+        <span data-component="ActionList.Item--DividerContainer"><div data-description-variant="block"><span id="p5--label" data-component="ActionList.Item.Label">testtest/sub1/subsub1</span><span data-component="ActionList.Description">testtest/sub1/subsub1</span></div></span></div></li>
+    <li tabindex="-1" role="option" aria-selected="false" data-id="list-6" data-component="ActionList.Item" data-has-description="false">
+      <div data-size="medium"><span data-component="ActionList.Selection"><div class="checkbox"></div></span>
+        <span data-component="ActionList.Item--DividerContainer"><span id="p6--label" data-component="ActionList.Item.Label">testtest/sub2</span></span></div></li>
+    <li tabindex="-1" role="option" aria-selected="false" data-id="list-9" data-component="ActionList.Item" data-has-description="false">
+      <div data-size="medium"><span data-component="ActionList.Selection"><div class="checkbox"></div></span>
+        <span data-component="ActionList.Item--DividerContainer"><span id="p9--label" data-component="ActionList.Item.Label">zzz</span></span></div></li>
+  </ul>
+</div>
+
 <pre id="out"></pre>
 
 <link rel="stylesheet" href="./styles.css">
@@ -81,6 +127,7 @@
 <script src="./src/core.js"></script>
 <script src="./src/settings.js"></script>
 <script src="./src/rail.js"></script>
+<script src="./src/picker.js"></script>
 <script src="./src/boot.js"></script>
 <script>
 const fails = [];
@@ -527,6 +574,180 @@ setTimeout(() => {
   const enLabels = [...en.querySelectorAll('.nestedStarList-label')];
   check('an empty folder label keeps its one-line height',
     Math.abs(enLabels[0].getBoundingClientRect().height - enLabels[1].getBoundingClientRect().height) <= 1);
+
+  // The star button's list picker: drawn in place, never reparented.
+  const pul = document.querySelector('#picker ul');
+  const pick = n => pul.querySelector(`li[data-id="list-${n}"]`);
+  const plabel = n => pick(n).querySelector('[data-component="ActionList.Item.Label"]');
+  const pname = n => plabel(n).firstChild.textContent.trim();
+  const ppath = n => plabel(n).querySelectorAll('.nestedStarList-path');
+  const pfold = path => [...pul.children].find(li => li.dataset.nestedStarListFolder === path);
+  const pslot = el => [...el.querySelectorAll(':scope > .nestedStarList-indent')]
+    .reduce((n, s) => n + parseInt(s.style.width), 0) + 'px';
+  const plines = el => [...el.querySelectorAll(':scope > .nestedStarList-indent')]
+    .map(s => s.dataset.nestedStarListLine || '-').join(',');
+  const pcaret = el => el.querySelector('.nestedStarList-caret');
+  const pfilter = document.querySelector('#picker input');
+  const shown = el => getComputedStyle(el).display !== 'none';
+
+  check('the picker shows the last segment', pname(2) === 'test2' && pname(5) === 'subsub1');
+  check('a picker row with no parent keeps its name', pname(1) === 'test' && pname(9) === 'zzz');
+  check('the picker keeps the full name on hover', pick(5).title === 'testtest/sub1/subsub1');
+  check('the picker keeps the list description',
+    text(pick(4).querySelector('[data-component="ActionList.Description"]')) === 'sub1');
+  check('the picker full path follows the setting',
+    ppath(5).length === 1 && getComputedStyle(ppath(5)[0]).display === 'none');
+  check('picker rows stay inside GitHub own listbox',
+    [...pul.querySelectorAll('li')].every(li => li.parentElement === pul));
+
+  // A folder spends the caret slot on its caret; a leaf leaves it empty, so
+  // names at the same depth line up either way.
+  check('the picker indents by depth',
+    pslot(pick(9)) === '24px' && pslot(pick(2)) === '40px' && pslot(pick(5)) === '56px');
+  check('a picker folder spends the slot on its caret',
+    pslot(pick(3)) === '0px' && pslot(pick(4)) === '16px');
+  check('only a picker folder gets a caret', !!pcaret(pick(3)) && !pcaret(pick(2)));
+  check('a picker folder counts what it holds',
+    text(pick(3).querySelector('.nestedStarList-pickcount')) === '2');
+
+  // Anything put inside Primer's grid lands in a cell of its own: the count
+  // wraps onto a line by itself, the caret drops below the checkbox. Our parts
+  // belong to the <li>, which we lay out as a flex line.
+  const rect = el => el.getBoundingClientRect();
+  check('a picker folder row stays one line high',
+    Math.abs(rect(pick(3)).height - rect(pick(9)).height) <= 1);
+  check('the caret sits ahead of the checkbox',
+    rect(pcaret(pick(3))).right <=
+      rect(pick(3).querySelector('[data-component="ActionList.Selection"]')).left);
+  check('the count stays on the row', rect(pick(3).querySelector('.nestedStarList-pickcount')).left
+    > rect(plabel(3)).right);
+
+  // One cell per level, each carrying the line of the ancestor it stands for:
+  // "|" while that ancestor still has rows below, "L" on the last child.
+  check('a branch stops at its last row',
+    plines(pick(8)) === 'elbow,-' && plines(pick(6)) === 'elbow,-' &&
+    plines(pick(2)) === 'elbow,-');
+  check('a branch runs on past a row that is not its last',
+    plines(pick(4)) === 'tee' && plines(pick(5)) === 'through,elbow,-');
+  check('a top-level row has no line', plines(pick(3)) === '' && plines(pick(9)) === '-');
+  check('the guide line is drawn',
+    getComputedStyle(pick(5).querySelector(':scope > .nestedStarList-indent'), '::before')
+      .borderLeftWidth === '1px');
+
+  // A row with no children says so: the list icon sits in the column the
+  // folders' carets use, so the icons read as one line down the panel.
+  // The glyph is the stylesheet's --nsl-list-icon, the one the profile rows
+  // carry: the cell only has to say it is a leaf.
+  const picon = el => el.querySelector(':scope > .nestedStarList-leaf');
+  check('a picker leaf gets a list icon',
+    !!picon(pick(9)) && !!picon(pick(6)) &&
+    getComputedStyle(picon(pick(9)), '::before').backgroundImage.includes('svg'));
+  check('a picker folder keeps its caret instead',
+    !picon(pick(3)) && !!pcaret(pick(3)));
+  const midX = el => { const r = rect(el); return r.left + r.width / 2; };
+  check('the list icon shares the column with the carets',
+    Math.abs(midX(picon(pick(6))) - midX(pcaret(pick(4)))) <= 1);
+
+  // A row with a description is two lines tall. The tree reads down the first
+  // line, so nothing of ours may drift to the middle of the row.
+  const midY = el => { const r = rect(el); return r.top + r.height / 2; };
+  check('a described row really is two lines',
+    rect(pick(4)).height > rect(pick(3)).height + 8);
+  // A caret holds both icons; only the one for its state is on screen.
+  const pglyph = el => [...pcaret(el).querySelectorAll('svg')]
+    .find(s => s.getBoundingClientRect().height);
+  check('the caret stays on the name line of a two-line row',
+    Math.abs(midY(pglyph(pick(4))) - midY(plabel(4))) <= 1);
+  check('so do the list icon and the count',
+    // The cell is as tall as the row, so it is the glyph inside it that has to
+    // sit on the name line — which is what --nsl-mid is for.
+    parseFloat(getComputedStyle(picon(pick(5)), '::before').top) ===
+      Math.round(midY(plabel(5)) - rect(pick(5)).top) &&
+    Math.abs(midY(pick(4).querySelector('.nestedStarList-pickcount')) - midY(plabel(4))) <= 1);
+  check('and the elbow arm that points at it',
+    getComputedStyle(pick(5).querySelector(':scope > .nestedStarList-indent:nth-of-type(2)'),
+      '::before').height === '16px');
+
+  // The branch must not break across the row the folder itself sits in — half
+  // a row, plus the whole description line when it has one.
+  const pcell = (el, i) => el.querySelectorAll(':scope > .nestedStarList-indent')[i];
+  check('an open folder carries the line down its own row',
+    getComputedStyle(pcaret(pick(4)), '::after').borderLeftWidth === '1px');
+  check('and hands it to its children at the same x',
+    Math.abs(rect(pcaret(pick(4))).left - rect(pcell(pick(5), 1)).left) <= 0.5);
+
+  // "Infra" and "Infra/aws" are named by no list of their own: rows of ours,
+  // between GitHub's, each directly above what it holds.
+  check('a picker folder with no list gets a row',
+    !!pfold('Infra') && !!pfold('Infra/aws'));
+  check('those rows sit above what they hold',
+    pfold('Infra').nextElementSibling === pfold('Infra/aws') &&
+    pfold('Infra/aws').nextElementSibling === pick(7));
+  check('a picker folder row is named and counted',
+    pfold('Infra/aws').querySelector('.nestedStarList-picklabel').firstChild.data === 'aws' &&
+    text(pfold('Infra').querySelector('.nestedStarList-pickcount')) === '2');
+
+  // Filtering the panel takes rows out of the <ul>: a folder can lose the list
+  // it was named after, and get it back when the filter clears. The row we put
+  // in its place must not outlive it.
+  const gone = pick(3), back = gone.nextElementSibling;
+  gone.remove();
+  api.nestPicker();
+  check('a folder that loses its own row gets one of ours', !!pfold('testtest'));
+  back.before(gone);
+  api.nestPicker();
+  check('and that row goes when the real one is back',
+    !pfold('testtest') && pick(3) === gone && plines(pick(4)) === 'tee');
+
+  // Clicking the caret must fold the folder — and nothing else: the row under
+  // it is a checkbox option, and the panel listens on its own root.
+  let leaked = 0;
+  pul.addEventListener('click', () => leaked++);
+  pick(3).addEventListener('click', () => leaked++);
+  pcaret(pick(3)).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  check('a caret click does not reach the row or the panel', leaked === 0);
+  check('closing a picker folder hides what is under it',
+    shown(pick(3)) && !shown(pick(4)) && !shown(pick(5)) && !shown(pick(6)));
+  check('a closed folder drops that line',
+    getComputedStyle(pcaret(pick(3)), '::after').borderLeftWidth === '0px');
+  check('the caret shows the folder is closed',
+    pcaret(pick(3)).dataset.nestedStarListOpen === undefined &&
+    getComputedStyle(pcaret(pick(3)).querySelector('.nestedStarList-closed')).display !== 'none');
+  // React re-renders the whole <ul> on every keystroke in the panel's own
+  // filter, which puts the full name back into a label already shortened.
+  plabel(5).firstChild.data = 'testtest/sub1/subsub1';
+  api.nestPicker();
+  check('a re-rendered picker row is re-shortened, not doubled',
+    pname(5) === 'subsub1' && ppath(5).length === 1);
+  check('a re-render does not re-open a closed folder', !shown(pick(5)));
+  // A closed folder would hide the panel's own search results.
+  pfilter.value = 'sub';
+  api.nestPicker();
+  check('a running panel filter shows every row', shown(pick(5)));
+  pfilter.value = '';
+  api.nestPicker();
+  check('clearing the filter folds it back', !shown(pick(5)));
+  pcaret(pick(3)).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  check('opening it again brings the rows back',
+    shown(pick(5)) && pcaret(pick(3)).dataset.nestedStarListOpen === '');
+
+  // A closed folder keeps its own row, so what is drawn beside it is still the
+  // branch the rows on screen make up.
+  const awsRow = pfold('Infra/aws');
+  pcaret(awsRow).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  check('closing a folder leaves the branch beside it intact',
+    !shown(pick(7)) && plines(awsRow) === 'tee' && plines(pick(8)) === 'elbow,-');
+  pcaret(awsRow).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+  // The observer calls nestPicker() on every DOM change, so a settled panel
+  // must take no writes at all — text included.
+  const pickObs = new MutationObserver(() => {});
+  pickObs.observe(document.getElementById('picker'),
+    { childList: true, subtree: true, characterData: true, attributes: true });
+  api.nestPicker();
+  const pickQuiet = pickObs.takeRecords().length === 0;
+  pickObs.disconnect();
+  check('a settled picker re-run writes nothing', pickQuiet);
 
   // Re-running must not duplicate groups or re-split already-nested names.
   box.appendChild(document.createElement('a'));
