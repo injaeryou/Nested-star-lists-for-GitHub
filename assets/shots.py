@@ -3,7 +3,7 @@
 white for the stores (they composite alpha onto their own background)."""
 from PIL import Image
 
-for name in ("After", "Before", "Rail"):
+for name in ("After", "Before", "Rail", "Edit-Star-List"):
     shot = Image.open(f"{name}.png").convert("RGBA")
     shot.thumbnail((1280, 800), Image.LANCZOS)
     at = ((1280 - shot.width) // 2, (800 - shot.height) // 2)
