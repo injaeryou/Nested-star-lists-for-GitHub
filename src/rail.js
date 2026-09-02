@@ -3,7 +3,7 @@
   const { MARK, fullOf, nest, expand, foldButton, treeKids } = globalThis.__nsl;
 
   const APP_NAME = 'Nested star lists for GitHub';
-  const REPO_URL = 'https://github.com/injaeryou/nested-star-lists-for-github';
+  const REPO_URL = 'https://github.com/injaeryou/Nested-star-lists-for-GitHub';
   const LIST_HREF = /^\/stars\/[^/]+\/lists\/[^/]+$/;
 
   // --- the same tree, on a single list's page ------------------------------

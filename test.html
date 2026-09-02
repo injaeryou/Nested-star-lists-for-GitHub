@@ -466,7 +466,7 @@ setTimeout(() => {
   const creditLink = foot.querySelector('a');
   check('credit line names the extension', text(creditLink) === 'Nested star lists for GitHub');
   check('credit line links to the repo',
-    creditLink.getAttribute('href') === 'https://github.com/injaeryou/nested-star-lists-for-github' &&
+    creditLink.getAttribute('href') === 'https://github.com/injaeryou/Nested-star-lists-for-GitHub' &&
     creditLink.target === '_blank' && creditLink.rel === 'noopener noreferrer');
   check('credit line is pinned and small',
     getComputedStyle(foot).position === 'sticky' && foot.getBoundingClientRect().height <= 28);
