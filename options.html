@@ -37,9 +37,11 @@
   fieldset label { margin: 4px 0; align-items: center; }
   @media (prefers-color-scheme: dark) { fieldset { border-color: #3d444d; } }
   p { margin: 2px 0 0; font-size: 12px; color: #59636e; }
+  footer { margin: 14px 0 0; font-size: 12px; color: #59636e; }
+  footer a { color: inherit; }
   @media (prefers-color-scheme: dark) {
     body { color: #f0f6fc; background: #0d1117; }
-    p { color: #9198a1; }
+    p, footer { color: #9198a1; }
   }
 </style>
 
@@ -75,5 +77,13 @@
   <label><input type="radio" name="sortMode" value="github"> Keep GitHub's order</label>
   <p>GitHub's own Sort menu decides; a folder sits where its first list was. Not in the star button's panel.</p>
 </fieldset>
+
+<!-- Links in a popup must open a tab: a plain navigation replaces the popup
+     with the page. -->
+<footer>
+  <a href="https://github.com/injaeryou/Nested-star-lists-for-GitHub" target="_blank" rel="noopener noreferrer">GitHub</a>
+  &middot;
+  <a href="https://github.com/injaeryou/Nested-star-lists-for-GitHub/issues/new" target="_blank" rel="noopener noreferrer">Report an issue</a>
+</footer>
 
 <script src="options.js"></script>
