@@ -330,6 +330,33 @@
     }
   };
 
+  // GitHub's create/edit list dialog: its name field gets a <datalist> of the
+  // folders already in use, so "AI/" is a pick rather than a convention to
+  // remember. The browser draws the suggestions; nothing here is UI.
+  const suggestFolders = () => {
+    const inputs = document.querySelectorAll('input[name="user_list[name]"]');
+    if (!inputs.length) return;
+    const paths = new Set();
+    for (const root of [container(), document.getElementById('nested-children')])
+      for (const a of root?.querySelectorAll('a[href*="/lists/"]') || []) {
+        const segs = parts(fullOf(a));
+        for (let i = 1; i < segs.length; i++)
+          if (segs.slice(0, i).every(Boolean)) paths.add(segs.slice(0, i).join('/') + '/');
+      }
+    const want = [...paths].sort((a, b) => a.localeCompare(b));
+    let list = document.getElementById(`${MARK}-folders`);
+    if (!list) {
+      list = document.createElement('datalist');
+      list.id = `${MARK}-folders`;
+      document.body.append(list);
+    }
+    // Write-guarded like everything the observer drives.
+    if ([...list.options].map(o => o.value).join('\n') !== want.join('\n'))
+      list.replaceChildren(...want.map(v => Object.assign(document.createElement('option'), { value: v })));
+    for (const input of inputs)
+      if (input.getAttribute('list') !== list.id) input.setAttribute('list', list.id);
+  };
+
   // Like GitHub's own lists box: past nine top-level entries the rest fold away
   // behind one row, until it is clicked (or the rail gets filtered).
   const TRUNCATE_AT = 9;
@@ -363,5 +390,6 @@
     folderIcon, FOLDER_CLOSED, FOLDER_OPEN, container, group, sortTree, countBadge, nest,
     setSortMode, setDefaultOpen, treeKids, expand, foldButton,
     folds, remember, setFolds, onSaveFolds,
+    suggestFolders,
   };
 })();
