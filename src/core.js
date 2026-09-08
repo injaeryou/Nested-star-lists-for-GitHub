@@ -333,9 +333,16 @@
   // GitHub's create/edit list dialog: its name field gets a <datalist> of the
   // folders already in use, so "AI/" is a pick rather than a convention to
   // remember. The browser draws the suggestions; nothing here is UI.
+  let suggesting = true;
+  const setSuggest = v => { suggesting = !!v; suggestFolders(); };
   const suggestFolders = () => {
     const inputs = document.querySelectorAll('input[name="user_list[name]"]');
     if (!inputs.length) return;
+    if (!suggesting) {     // switched off: take the list back off the field
+      for (const input of inputs) if (input.hasAttribute('list')) input.removeAttribute('list');
+      document.getElementById(`${MARK}-folders`)?.remove();
+      return;
+    }
     const paths = new Set();
     for (const root of [container(), document.getElementById('nested-children')])
       for (const a of root?.querySelectorAll('a[href*="/lists/"]') || []) {
@@ -390,6 +397,6 @@
     folderIcon, FOLDER_CLOSED, FOLDER_OPEN, container, group, sortTree, countBadge, nest,
     setSortMode, setDefaultOpen, treeKids, expand, foldButton,
     folds, remember, setFolds, onSaveFolds,
-    suggestFolders,
+    suggestFolders, setSuggest,
   };
 })();

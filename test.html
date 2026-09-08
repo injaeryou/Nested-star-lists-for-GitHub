@@ -306,6 +306,10 @@ setTimeout(() => {
   const firstOption = nameField.list.options[0];
   api.suggestFolders();
   check('a suggestion re-run rewrites nothing', nameField.list.options[0] === firstOption);
+  api.setSuggest(false);
+  check('switching suggestions off takes the list off the field', !nameField.hasAttribute('list'));
+  api.setSuggest(true);
+  check('and on again puts it back', suggested() === 'AI/,AI/RAG/,Infra/,Infra/aws/');
 
   // "AI/RAG" sits between "AI" and "AI/RAG/eval", so it must become a group of
   // its own inside AI, with the real list as its header.
