@@ -394,8 +394,8 @@ details[data-nested-star-list-parent] > a.Box-row h3::before { left: 34px; }
 /* A folder no list is named after gets a row of ours between GitHub's — muted,
    since there is nothing to check on it. */
 li.nestedStarList-pick {
-  display: flex; align-items: center; padding: 6px 8px; border-radius: 6px;
-  color: var(--nsl-muted); font-size: 14px;
+  display: flex; align-items: center; border-radius: 6px;
+  color: var(--nsl-muted); font-size: 14px;   /* its box is copied off a real row */
 }
 /* Only in the picker: a caret in a <summary> centres on its own row. */
 li > .nestedStarList-caret {
