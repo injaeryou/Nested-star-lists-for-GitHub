@@ -80,7 +80,7 @@
       let d = [...parent.children].find(el => el.dataset?.[MARK + 'Parent'] === key);
       if (!d) {
         d = document.createElement('details');
-        d.open = defaultOpen;
+        d.open = folds[key] ?? defaultOpen;
         d.dataset[MARK + 'Parent'] = key;
         d.dataset[MARK + 'Virtual'] = '1';      // no list of its own until promoted
         const s = document.createElement('summary');
@@ -96,6 +96,8 @@
         label.title = `No list named "${key}" — folder only`;
         if (seen.length > 1) label.append(mutedTag(key));   // same muted path as rows
         s.append(caret, label);
+        // Fires before the toggle itself, so !open is the state being chosen.
+        s.addEventListener('click', () => remember({ [key]: !d.open }));
         d.append(s);
         if (parent === root && hint?.parentElement === root) hint.before(d);
         else parent.append(d);
@@ -169,17 +171,32 @@
     el.title = `${kids} lists inside`;
   };
 
-  // Folders start collapsed; the "open" setting flips both future groups and the
-  // ones already on the page.
+  // Folders start collapsed unless the "open" setting says otherwise — and a
+  // folder the reader folded by hand stays the way they left it: by path, on
+  // every surface, across pages. Only deliberate clicks are remembered; a
+  // folder the rail's filter or the current list's path opened is not a choice.
   let defaultOpen = false;
-  const setDefaultOpen = v => {
-    defaultOpen = !!v;
+  const folds = {};                 // path -> open
+  let saveFolds = () => {};         // settings.js supplies the storage
+  const applyFolds = () => {
     for (const d of document.querySelectorAll('details[data-nested-star-list-parent]'))
-      d.open = defaultOpen;
+      d.open = folds[d.dataset[MARK + 'Parent']] ?? defaultOpen;
     // The async settings read can land after the rail already opened the path
     // to the list being read; that path stays open no matter the default.
     for (let e = document.querySelector(`.${MARK}-current`); e; e = e.parentElement)
       if (e.tagName === 'DETAILS') e.open = true;
+    globalThis.__nsl.nestPicker?.();
+  };
+  const remember = changes => { Object.assign(folds, changes); saveFolds({ ...folds }); };
+  const setFolds = stored => {
+    for (const k of Object.keys(folds)) delete folds[k];
+    Object.assign(folds, stored);
+    applyFolds();
+  };
+  const onSaveFolds = fn => { saveFolds = fn; };
+  const setDefaultOpen = v => {
+    defaultOpen = !!v;
+    applyFolds();
   };
 
   // One button opens or closes every folder under `root`. The icons are the
@@ -196,7 +213,12 @@
       b.append(label);
     }
     b.addEventListener('click', () => {
-      for (const g of root.querySelectorAll('details[data-nested-star-list-parent]')) g.open = open;
+      const changes = {};
+      for (const g of root.querySelectorAll('details[data-nested-star-list-parent]')) {
+        g.open = open;
+        changes[g.dataset[MARK + 'Parent']] = open;
+      }
+      remember(changes);
     });
     return b;
   };
@@ -317,5 +339,6 @@
     MARK, SEP, parts, norm, nameNode, nameOf, fullOf, mutedTag, rename,
     folderIcon, FOLDER_CLOSED, FOLDER_OPEN, container, group, sortTree, countBadge, nest,
     setSortMode, setDefaultOpen, treeKids, expand, foldButton,
+    folds, remember, setFolds, onSaveFolds,
   };
 })();

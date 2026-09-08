@@ -1,6 +1,6 @@
 // Part of Nested star lists for GitHub. Loaded in manifest order.
 (() => {
-  const { MARK, parts, nameNode, rename, mutedTag,
+  const { MARK, parts, nameNode, rename, mutedTag, folds, remember,
           folderIcon, FOLDER_CLOSED, FOLDER_OPEN } = globalThis.__nsl;
 
   // The star button's "Add this repository to a list" panel — of which GitHub
@@ -41,9 +41,10 @@
   // its filter and reuses <li> elements, so a row cannot be trusted to still
   // hold the list it held last time.
   const nameById = new Map();
-  // Folders the reader closed. Kept for the tab's lifetime — the panel throws
-  // its rows away each time it closes, the tree state should not go with them.
-  const shut = new Set();
+  // The panel starts every folder open — a picker is for reaching lists, not
+  // for tidying — but a folder the reader closed stays closed: the memory is
+  // core's, shared with the profile tree and the rail.
+  const isOpen = path => folds[path] ?? true;
 
   // aria-hidden, and no tabindex: the listbox owns the keyboard, and a real
   // button inside an option would break its roving focus. This is click-only.
@@ -63,7 +64,7 @@
         e.stopImmediatePropagation();
         if (type !== 'click') return;
         const path = c.dataset[FOLDER];
-        if (!shut.delete(path)) shut.add(path);
+        remember({ [path]: !isOpen(path) });
         nestPicker();
       }, true);
     return c;
@@ -189,7 +190,7 @@
     // matches — so a search sees everything, exactly like the rail's filter.
     const filtering = !!kind.filter(ul)?.value.trim();
     const buried = path => !filtering &&
-      parts(path).slice(0, -1).some((_, i, a) => shut.has(a.slice(0, i + 1).join('/')));
+      parts(path).slice(0, -1).some((_, i, a) => !isOpen(a.slice(0, i + 1).join('/')));
 
     // Place the rows for folders that own no list, deepest first so each lands
     // directly above what it holds.
@@ -259,7 +260,7 @@
       if (folder) {
         let c = [...el.children].find(x => x.classList.contains(`${MARK}-caret`)) || caret();
         if (c.dataset[FOLDER] !== path) c.dataset[FOLDER] = path;
-        const open = filtering || !shut.has(path);
+        const open = filtering || isOpen(path);
         if (open && c.dataset[OPEN] === undefined) c.dataset[OPEN] = '';
         if (!open && c.dataset[OPEN] !== undefined) delete c.dataset[OPEN];
         if (s ? s.nextElementSibling !== c : el.firstElementChild !== c)

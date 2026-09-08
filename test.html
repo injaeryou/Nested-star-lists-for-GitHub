@@ -174,6 +174,8 @@
 <style>
   .d-block { display: block !important; }
 </style>
+<!-- Fold memory outlives a run in a real browser; a test must start clean. -->
+<script>localStorage.removeItem('nestedStarList:foldState');</script>
 <script src="./src/core.js"></script>
 <script src="./src/settings.js"></script>
 <script src="./src/rail.js"></script>
@@ -258,6 +260,20 @@ setTimeout(() => {
   wideOpen.click();
   check('wide expand-all opens every folder',
     [...box.querySelectorAll('details')].every(d => d.open));
+
+  // Deliberate folds are remembered by path, so the next page — and the other
+  // surfaces — pick them up. Only clicks count: the buttons above, a summary.
+  const folds = () => JSON.parse(localStorage.getItem('nestedStarList:foldState') || '{}');
+  check('expand-all is remembered', folds().AI === true && folds()['Infra/aws'] === true);
+  ai.querySelector('summary').click();
+  check('folding a folder by hand is remembered', !ai.open && folds().AI === false);
+  ai.querySelector('summary').click();
+  check('and so is unfolding it', ai.open && folds().AI === true);
+  api.setFolds({ 'Infra/aws': false });
+  check('stored folds apply to the folders already on the page',
+    !infra.querySelector('details').open && ai.open);
+  api.setFolds({});
+  check('no memory means the default', infra.querySelector('details').open);
   check('real list promoted to header',
     ai.querySelector('summary a')?.getAttribute('href') === '/stars/me/lists/ai');
   check('link outside container untouched', text(document.querySelector('footer a')) === 'Other/decoy');
