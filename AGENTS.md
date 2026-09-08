@@ -110,6 +110,13 @@ session: `page.context().browser().browserType().launch({ headless: true,
 channel: 'chrome' })` (the ms-playwright cache has no downloaded browsers here,
 so the system-Chrome channel is the one that launches).
 
+The popup (`options.html`) needs the real extension around it — `chrome.storage`,
+`chrome.management`. Load it with `launchPersistentContext(dir, { headless: true,
+channel: 'chromium', ignoreDefaultArgs: ['--disable-extensions'], args:
+['--load-extension=<repo>'] })`: the `chrome` channel silently loads nothing
+headless, and Playwright's default args disable extensions. The unpacked id is
+the SHA-256 of the absolute path, first 32 hex digits mapped onto `a`–`p`.
+
 ### The harness lies in known ways
 
 Every one of these differences has already shipped a bug that only the user's
