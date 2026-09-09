@@ -13,6 +13,25 @@
   }
   h1 { font-size: 14px; margin: 0 0 12px; }
   label { display: flex; gap: 8px; align-items: flex-start; }
+  /* A checkbox drawn as a switch, at the end of its row. The input stays a
+     checkbox, so the script and the stored value do not change. */
+  label > input[type="checkbox"] {
+    appearance: none; order: 1; margin: 2px 0 0 auto; flex: none;
+    width: 32px; height: 18px; border-radius: 9px; position: relative; cursor: pointer;
+    background: #818b98; transition: background .15s;
+  }
+  label > input[type="checkbox"]::before {
+    content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px;
+    border-radius: 50%; background: #fff; transition: left .15s;
+  }
+  label > input[type="checkbox"]:checked { background: #0969da; }
+  label > input[type="checkbox"]:checked::before { left: 16px; }
+  label > input[type="checkbox"]:focus-visible { outline: 2px solid #0969da; outline-offset: 2px; }
+  @media (prefers-color-scheme: dark) {
+    label > input[type="checkbox"] { background: #3d444d; }
+    label > input[type="checkbox"]:checked { background: #1f6feb; }
+    label > input[type="checkbox"]:focus-visible { outline-color: #1f6feb; }
+  }
   fieldset { margin: 14px 0 0; padding: 8px 12px 10px; border: 1px solid #d1d9e0; border-radius: 6px; }
   legend { font-size: 12px; padding: 0 4px; }
   fieldset label { margin: 4px 0; align-items: center; }
@@ -26,7 +45,7 @@
 
 <h1>Nested star lists for GitHub</h1>
 <label>
-  <input type="checkbox" id="showFullPaths">
+  <input type="checkbox" role="switch" id="showFullPaths">
   <span>
     Show the full list name
     <p>Each row shows its full name in grey, like <code>child (parent/child)</code>.</p>
@@ -34,7 +53,7 @@
 </label>
 
 <label style="margin-top:12px">
-  <input type="checkbox" id="foldersOpen">
+  <input type="checkbox" role="switch" id="foldersOpen">
   <span>
     Start with folders expanded
     <p>Folders begin collapsed; turn this on to open every folder by default.</p>
@@ -42,7 +61,7 @@
 </label>
 
 <label style="margin-top:12px">
-  <input type="checkbox" id="suggestFolders">
+  <input type="checkbox" role="switch" id="suggestFolders">
   <span>
     Suggest folders when naming a list
     <p>The name field of GitHub's list dialog offers the folders already in use, like <code>parent/</code>.</p>
