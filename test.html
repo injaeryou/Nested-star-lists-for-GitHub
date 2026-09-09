@@ -269,6 +269,15 @@ setTimeout(() => {
   check('the type setting groups folders first', childTags() === 'DETAILS,A,A');
   api.setSortMode('name');
   check('back to name order', childTags() === 'A,DETAILS,A');
+  // The "github" setting rebuilds arrival order: the fixture lists AI/RAG,
+  // AI/agents, AI/tools in that order, and RAG's header row came first of all.
+  const order = el => [...el.children].filter(c => c.tagName !== 'SUMMARY')
+    .map(c => c.tagName === 'DETAILS' ? c.dataset.nestedStarListParent : name(c)).join(',');
+  api.setSortMode('github');
+  check('the github setting keeps arrival order', order(ai) === 'AI/RAG,agents,tools');
+  check('github order seats a folder at its earliest member',
+    order(box).startsWith('AI,Infra:k8s,Infra,'));
+  api.setSortMode('name');
 
   // "AI/RAG" sits between "AI" and "AI/RAG/eval", so it must become a group of
   // its own inside AI, with the real list as its header.

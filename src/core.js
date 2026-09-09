@@ -71,6 +71,24 @@
   // Walk down (creating as needed) the group chain for a path like ["a", "b"],
   // so any depth of "a/b/c/..." nests. `hint` keeps a new top-level group in the
   // slot its first row occupied.
+  // Arrival order, stamped on every row the first time it is seen, is the one
+  // thing GitHub's own order can be rebuilt from once the rows are a tree. A
+  // folder takes the place of its earliest member — header row or descendant.
+  const SEQ = MARK + 'Seq';
+  let seq = 0;
+  const seat = (el, n) => {
+    for (; el && el.tagName === 'DETAILS'; el = el.parentElement)
+      if (el.dataset[SEQ] === undefined || +el.dataset[SEQ] > n) el.dataset[SEQ] = String(n);
+  };
+  // Before anything reorders the rows — a synchronous settings read can sort
+  // the box before nest() ever sees it. Stamps never go stale: GitHub's Sort
+  // menu is a Turbo visit that replaces every row (checked live 2026-09-09).
+  const stamp = root => {
+    for (const a of root.querySelectorAll('a[href*="/lists/"]')) {
+      const row = a.closest('li') || a;
+      if (row.dataset[SEQ] === undefined) row.dataset[SEQ] = String(seq++);
+    }
+  };
   const group = (root, path, hint) => {
     let parent = root;
     const seen = [];
@@ -100,6 +118,7 @@
         if (parent === root && hint?.parentElement === root) hint.before(d);
         else parent.append(d);
       }
+      if (hint?.dataset[SEQ] !== undefined) seat(d, +hint.dataset[SEQ]);
       parent = d;
     }
     return parent;
@@ -133,7 +152,7 @@
     // is put back exactly where its first row was.
     const dir = sortDir();
     const kids = treeKids(el);
-    const wanted = [...kids].sort((x, y) =>
+    const wanted = [...kids].sort((x, y) => githubOrder ? +x.dataset[SEQ] - +y.dataset[SEQ] :
       (foldersFirst ? (y.tagName === 'DETAILS') - (x.tagName === 'DETAILS') : 0) ||
       dir * sortKey(x).toLowerCase().localeCompare(sortKey(y).toLowerCase()));
     // Only touch the DOM when the order actually changes, or the observer that
@@ -202,10 +221,12 @@
   };
 
   let foldersFirst = false;
+  let githubOrder = false;    // "github": arrival order, folders where they first appear
   const setSortMode = mode => {
     foldersFirst = mode === 'type';
+    githubOrder = mode === 'github';
     for (const root of [container(), document.getElementById('nested-children')])
-      if (root) sortTree(root);
+      if (root) { stamp(root); sortTree(root); }
   };
 
   const nest = (root = container()) => {
@@ -218,6 +239,7 @@
       wrap.classList.add(`${MARK}-hide`);
     }
     const links = () => [...root.querySelectorAll('a[href*="/lists/"]')];
+    stamp(root);
     const all = links().map(a => norm(fullOf(a)));
     // "a/b" with "a/b/c" around is a group header, not a leaf: leave it for the
     // promotion pass below, which puts it in its own group's summary.
@@ -247,6 +269,7 @@
       if (row.parentElement === root && d.parentElement === root) root.insertBefore(d, row);
       s.querySelector(`.${MARK}-label`)?.remove();   // keep the caret, swap the label
       s.append(row);
+      seat(d, +row.dataset[SEQ]);
     }
 
     // On the profile page the fold-all controls sit beside the "Lists (N)"
