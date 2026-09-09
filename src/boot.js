@@ -1,6 +1,7 @@
 // Part of Nested star lists for GitHub. Loaded in manifest order.
 (() => {
-  const { nest, nestPicker, showTree, loadSettings, listColumn, adoptStrays, harvestIndex } = globalThis.__nsl;
+  const { nest, nestPicker, showTree, loadSettings, listColumn, adoptStrays, harvestIndex,
+          suggestFolders } = globalThis.__nsl;
 
   let seen = '';
   const tick = () => {
@@ -8,6 +9,7 @@
     nestPicker();
     adoptStrays();
     harvestIndex();
+    suggestFolders();
     // Wait for the list column: at document_start there is no body yet, and a
     // cached index would otherwise mount the rail with nothing to mount it beside.
     if (!document.getElementById('nested-children')) seen = '';   // a page swap took it
