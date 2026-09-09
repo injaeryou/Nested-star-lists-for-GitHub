@@ -94,6 +94,20 @@
     return li;
   };
 
+  // A row of ours has to sit in the same box as GitHub's rows, whose classes
+  // are hashed and change every build — so the box is read off a real row: the
+  // <li>'s own margin and padding on ours, its content's padding and line
+  // height on our label, so the two rows come out the same height with the
+  // caret's vertical reference (the <li>'s content edge) in the same place.
+  const fit = (v, real) => {
+    const li = getComputedStyle(real.el), c = getComputedStyle(real.content);
+    const label = v.querySelector(`.${MARK}-picklabel`);
+    if (v.style.margin !== li.margin) v.style.margin = li.margin;
+    if (v.style.padding !== li.padding) v.style.padding = li.padding;
+    if (label.style.padding !== c.padding) label.style.padding = c.padding;
+    if (label.style.lineHeight !== c.lineHeight) label.style.lineHeight = c.lineHeight;
+  };
+
   // Indent without touching the row's own box: Primer owns the padding on both
   // the row and its content, and overwriting it would move GitHub's layout.
   // One cell per level, so each can carry the guide line of the ancestor it
@@ -204,6 +218,7 @@
         placed.add(path);
         const ul = anchor.parentElement;
         let v = [...ul.children].find(c => c.dataset?.[FOLDER] === path) || folderRow(path);
+        fit(v, row);
         if (v.nextElementSibling !== anchor) anchor.before(v);
         drawn.push({ el: v, content: v, path });
         anchor = v;

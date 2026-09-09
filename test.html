@@ -774,6 +774,13 @@ setTimeout(() => {
   check('and that row goes when the real one is back',
     !pfold('testtest') && pick(3) === gone && plines(pick(4)) === 'tee');
 
+  // A folder row of ours sits in the same box as GitHub's: the caret of the
+  // virtual "Infra" lines up with the caret of the real folder "test", and the
+  // two rows are the same height.
+  check('a virtual folder row lines up with a real folder row',
+    x(pcaret(pfold('Infra'))) === x(pcaret(pick(1))) &&
+    pfold('Infra').getBoundingClientRect().height === pick(1).getBoundingClientRect().height);
+
   // Clicking the caret must fold the folder — and nothing else: the row under
   // it is a checkbox option, and the panel listens on its own root.
   let leaked = 0;
