@@ -54,6 +54,10 @@ Load it unpacked from a clone:
 
 Then open your stars: `github.com/<you>?tab=stars`. Settings (sort order, folders expanded by default, full list names, folder suggestions) live behind the toolbar icon.
 
+## Release
+
+*Actions* → *Release* → *Run workflow* with the new version (`0.3.0`). It bumps `manifest.json`, tags, publishes a GitHub release with the zip, and submits that zip to each store whose keys are set (see the comment at the top of [`release.yml`](.github/workflows/release.yml)).
+
 ## Licence
 
 [Apache-2.0](LICENSE).
