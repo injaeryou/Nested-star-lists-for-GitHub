@@ -39,6 +39,7 @@
         "src/settings.js",
         "src/rail.js",
         "src/picker.js",
+        "src/suggest.js",
         "src/boot.js"
       ],
       "run_at": "document_start",

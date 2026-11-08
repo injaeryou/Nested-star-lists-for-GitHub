@@ -1,6 +1,6 @@
 // Part of Nested star lists for GitHub. Loaded in manifest order.
 (() => {
-  const { MARK, parts, nameNode, rename, mutedTag, folds, remember,
+  const { MARK, parts, nameNode, rename, mutedTag,
           folderIcon, FOLDER_CLOSED, FOLDER_OPEN } = globalThis.__nsl;
 
   // The star button's "Add this repository to a list" panel — of which GitHub
@@ -13,6 +13,7 @@
       row: 'li[data-id^="list-"]',
       label: '[data-component="ActionList.Item.Label"]',
       id: li => li.dataset.id,
+      check: '[data-component="ActionList.Selection"]',
       // React re-renders the whole <ul> on every keystroke in its own filter,
       // so a row moved out from under it breaks the reconciler. It does not
       // need moving: that panel already comes sorted by full name.
@@ -24,6 +25,7 @@
       row: 'li.ActionListItem[data-item-id^="user-list-"]',
       label: '.ActionListItem-label',
       id: li => li.dataset.itemId,
+      check: '.ActionListItem-visual',
       // Server order, which is neither the tree's nor alphabetical — and
       // nothing here owns the rows, so they are ours to sort. No filter box.
       sort: true,
@@ -42,9 +44,21 @@
   // hold the list it held last time.
   const nameById = new Map();
   // The panel starts every folder open — a picker is for reaching lists, not
-  // for tidying — but a folder the reader closed stays closed: the memory is
-  // core's, shared with the profile tree and the rail.
-  const isOpen = path => folds[path] ?? true;
+  // for tidying. Its folds are its own, shared by every panel and remembered
+  // across pages, but not with the profile tree: folding that one behind an
+  // open panel moves the page, and the panel jumps with it.
+  const opened = new Map();
+  const isOpen = path => opened.get(path) ?? true;
+  let savePanelFolds = () => {};     // settings.js supplies the storage
+  const onSavePanelFolds = fn => { savePanelFolds = fn; };
+  // Storage echoes this tab's own writes, and after two quick clicks the first
+  // echo lands behind the second: an echo of the state already held is skipped.
+  const setPanelFolds = stored => {
+    if (JSON.stringify(stored) === JSON.stringify(Object.fromEntries(opened))) return;
+    opened.clear();
+    for (const [path, open] of Object.entries(stored)) opened.set(path, open);
+    nestPicker();
+  };
 
   // aria-hidden, and no tabindex: the listbox owns the keyboard, and a real
   // button inside an option would break its roving focus. This is click-only.
@@ -54,21 +68,31 @@
     c.setAttribute('aria-hidden', 'true');
     c.append(folderIcon(`${MARK}-closed`, FOLDER_CLOSED),
              folderIcon(`${MARK}-open`, FOLDER_OPEN));
-    // Capture and stop it dead: the row underneath is a checkbox option, and
-    // the panel listens on its own root, so an escaping click would tick it.
-    // The path is read from the element, not closed over — a re-rendered row
-    // can be holding a different list by the time this fires.
-    for (const type of ['pointerdown', 'mousedown', 'click'])
-      c.addEventListener(type, e => {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        if (type !== 'click') return;
-        const path = c.dataset[FOLDER];
-        remember({ [path]: !isOpen(path) });
-        nestPicker();
-      }, true);
     return c;
   };
+
+  // A folder row folds from anywhere on it but its checkbox, which still
+  // ticks the list the folder is named after. Captured on the document, ahead
+  // of both panels' own root listeners, and stopped dead there — an escaping
+  // click would tick the row. A keyboard Enter on a Catalyst row arrives as a
+  // click with no pointer behind it (detail 0) and is left to select; only the
+  // caret, which takes no focus, folds on any click. The path is read off the
+  // caret, not memoized — a re-rendered row can hold a different list.
+  const CHECK = PANELS.map(p => p.check).join(',');
+  for (const type of ['pointerdown', 'mousedown', 'click'])
+    document.addEventListener(type, e => {
+      const c = e.target.closest?.('li')?.querySelector(`:scope > .${MARK}-caret`);
+      if (!c) return;
+      if (!c.contains(e.target) &&
+          (e.target.closest(CHECK) || (type === 'click' && e.detail === 0))) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      if (type !== 'click') return;
+      const path = c.dataset[FOLDER];
+      opened.set(path, !isOpen(path));
+      savePanelFolds(Object.fromEntries(opened));
+      nestPicker();
+    }, true);
 
   // Tree order, compared a segment at a time: a parent lands above its own
   // children whatever "/" is worth in the locale's collation.
@@ -295,5 +319,8 @@
     });
   };
 
-  Object.assign(globalThis.__nsl, { nestPicker });
+  // Every list a star panel on this page has shown: the reader's own lists.
+  const panelNames = () => [...new Set(nameById.values())];
+
+  Object.assign(globalThis.__nsl, { nestPicker, panelNames, setPanelFolds, onSavePanelFolds });
 })();

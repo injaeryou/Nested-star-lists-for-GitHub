@@ -14,12 +14,18 @@
   --nsl-bg-inset: var(--bgColor-inset, #f6f8fa);
   --nsl-bg-neutral: var(--bgColor-neutral-muted, #6e768118);
   --nsl-bg-accent: var(--bgColor-accent-muted, #ddf4ff);
+  --nsl-bg-hover: var(--control-transparent-bgColor-hover, #818b981a);
+  --nsl-bg-active: var(--control-transparent-bgColor-active, #818b9826);
+  --nsl-overlay-bg: var(--overlay-bgColor, #ffffff);
+  --nsl-overlay-shadow: var(--shadow-floating-small,
+    0 0 0 1px #d1d9e080, 0 6px 12px -3px #25292e0a, 0 6px 18px 0 #25292e1f);
 }
 /* Glyphs, as masks rather than pictures: a fill baked into a data URI
-   cannot follow a theme, but the colour painted through a mask can. */
+   cannot follow a theme, but the colour painted through a mask can.
+   Octicons repo, list-unordered and search (MIT, see NOTICE). */
 :root { --nsl-repo-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v3.25a.25.25 0 0 1-.4.2l-1.45-1.087a.249.249 0 0 0-.3 0L5.4 15.7a.25.25 0 0 1-.4-.2Z'/%3E%3C/svg%3E"); }
 :root { --nsl-list-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M5.75 2.5h8.5a.75.75 0 0 1 0 1.5h-8.5a.75.75 0 0 1 0-1.5Zm0 5h8.5a.75.75 0 0 1 0 1.5h-8.5a.75.75 0 0 1 0-1.5Zm0 5h8.5a.75.75 0 0 1 0 1.5h-8.5a.75.75 0 0 1 0-1.5ZM2 14a1 1 0 1 1 0-2 1 1 0 0 1 0 2Zm1-6a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM2 4a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z'/%3E%3C/svg%3E"); }
-:root { --nsl-search-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M10.68 11.74a6 6 0 0 1-7.922-8.982 6 6 0 0 1 8.982 7.922l3.04 3.04a.749.749 0 0 1-.53 1.28.749.749 0 0 1-.53-.22ZM11.5 7a4.499 4.499 0 1 0-8.997 0A4.499 4.499 0 0 0 11.5 7Z'/%3E%3C/svg%3E"); }
+:root { --nsl-search-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M10.68 11.74a6 6 0 0 1-7.922-8.982 6 6 0 0 1 8.982 7.922l3.04 3.04a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215ZM11.5 7a4.499 4.499 0 1 0-8.997 0A4.499 4.499 0 0 0 11.5 7Z'/%3E%3C/svg%3E"); }
 
 @media (prefers-color-scheme: dark) {
   :root {
@@ -32,6 +38,11 @@
     --nsl-bg-inset: var(--bgColor-inset, #010409);
     --nsl-bg-neutral: var(--bgColor-neutral-muted, #656c7633);
     --nsl-bg-accent: var(--bgColor-accent-muted, #388bfd1a);
+    --nsl-bg-hover: var(--control-transparent-bgColor-hover, #656c7633);
+    --nsl-bg-active: var(--control-transparent-bgColor-active, #656c7640);
+    --nsl-overlay-bg: var(--overlay-bgColor, #151b23);
+    --nsl-overlay-shadow: var(--shadow-floating-small,
+      0 0 0 1px #3d444d, 0 6px 12px -3px #01040966, 0 6px 18px 0 #01040966);
   }
 }
 
@@ -394,9 +405,18 @@ details[data-nested-star-list-parent] > a.Box-row h3::before { left: 34px; }
 /* A folder no list is named after gets a row of ours between GitHub's — muted,
    since there is nothing to check on it. */
 li.nestedStarList-pick {
-  display: flex; align-items: center; border-radius: 6px;
+  display: flex; align-items: center; border-radius: 6px; cursor: pointer;
   color: var(--nsl-muted); font-size: 14px;   /* its box is copied off a real row */
 }
+/* It folds on a click, so it answers the pointer the way GitHub's rows do. */
+li.nestedStarList-pick:hover { background: var(--nsl-bg-hover); }
+li.nestedStarList-pick:active { background: var(--nsl-bg-active); }
+/* The Catalyst panel places itself before showModal(), while it still has no
+   width, so its first frame lands right of the button, then jumps back once it
+   is on screen and sets data-ready. Hide that frame — for 100ms at most, so a
+   panel that never gets the attribute still shows. */
+select-panel dialog[open]:not([data-ready]) { animation: nestedStarList-hold 100ms step-end; }
+@keyframes nestedStarList-hold { from { visibility: hidden; } }
 /* Only in the picker: a caret in a <summary> centres on its own row. */
 li > .nestedStarList-caret {
   align-items: flex-start; padding-top: calc(var(--nsl-mid) - 7px); position: relative;
@@ -411,3 +431,20 @@ li > .nestedStarList-caret[data-nested-star-list-open]::after {
 .nestedStarList-pickcount {
   margin-left: auto; align-self: flex-start; margin-top: calc(var(--nsl-mid) - 10px);
 }
+
+/* Folder suggestions under a list dialog's name field: GitHub's own menu, an
+   overlay of action-list rows. A popover, so the UA centres it unless told. */
+.nestedStarList-suggest {
+  position: fixed; inset: auto; margin: 0; padding: 8px; box-sizing: border-box;
+  max-height: 240px; overflow-y: auto; list-style: none;
+  border: 0; border-radius: 12px;
+  background: var(--nsl-overlay-bg); box-shadow: var(--nsl-overlay-shadow);
+  color: var(--nsl-fg); font-size: 14px;
+}
+.nestedStarList-suggest li {
+  display: flex; align-items: center; gap: 8px; padding: 6px 8px;
+  border-radius: 6px; cursor: pointer; line-height: 20px;
+}
+.nestedStarList-suggest li[aria-selected="true"] { background: var(--nsl-bg-hover); }
+.nestedStarList-suggest li:active { background: var(--nsl-bg-active); }
+.nestedStarList-suggest svg { flex: none; width: 16px; height: 16px; fill: var(--nsl-muted); }
