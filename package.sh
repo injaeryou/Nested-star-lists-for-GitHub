@@ -3,6 +3,6 @@
 cd "$(dirname "$0")" || exit 1
 rm -f nested-star-lists-for-github.zip
 zip -r nested-star-lists-for-github.zip \
-  manifest.json styles.css options.html options.js src icons \
+  manifest.json styles.css options.html options.js src icons NOTICE \
   -x '*/.*' '*/.*/*' '.*'
 echo "→ nested-star-lists-for-github.zip"

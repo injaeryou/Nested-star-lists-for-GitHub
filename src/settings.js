@@ -12,12 +12,13 @@
   // Fold memory is per device — a click per write would also run into
   // storage.sync's write quota — so it lives in storage.local.
   const FOLDS_KEY = 'foldState';
+  const PANEL_FOLDS_KEY = 'panelFoldState';    // the star panels keep their own
   const applyPaths = on => { document.documentElement.dataset.nslPaths = on ? 'on' : 'off'; };
   const applySort = mode => globalThis.__nsl.setSortMode(mode || 'name');
   const applyOpen = v => globalThis.__nsl.setDefaultOpen(v);
   const applySuggest = v => globalThis.__nsl.setSuggest(v);
   const loadSettings = () => {
-    const { setFolds, onSaveFolds } = globalThis.__nsl;
+    const { setFolds, onSaveFolds, setPanelFolds, onSavePanelFolds } = globalThis.__nsl;
     const store = globalThis.chrome?.storage?.sync;
     if (!store) {
       applyPaths(localStorage.getItem(`${MARK}:${PATHS_KEY}`) === 'true');
@@ -25,6 +26,8 @@
       applySuggest(localStorage.getItem(`${MARK}:${SUGGEST_KEY}`) !== 'false');
       onSaveFolds(f => localStorage.setItem(`${MARK}:${FOLDS_KEY}`, JSON.stringify(f)));
       setFolds(JSON.parse(localStorage.getItem(`${MARK}:${FOLDS_KEY}`) || '{}'));
+      onSavePanelFolds(f => localStorage.setItem(`${MARK}:${PANEL_FOLDS_KEY}`, JSON.stringify(f)));
+      setPanelFolds(JSON.parse(localStorage.getItem(`${MARK}:${PANEL_FOLDS_KEY}`) || '{}'));
       return applySort(localStorage.getItem(`${MARK}:${SORT_KEY}`));
     }
     store.get({ [PATHS_KEY]: false, [SORT_KEY]: 'name', [OPEN_KEY]: false, [SUGGEST_KEY]: true }, v => {
@@ -35,6 +38,8 @@
     });
     onSaveFolds(f => chrome.storage.local.set({ [FOLDS_KEY]: f }));
     chrome.storage.local.get({ [FOLDS_KEY]: {} }, v => setFolds(v[FOLDS_KEY]));
+    onSavePanelFolds(f => chrome.storage.local.set({ [PANEL_FOLDS_KEY]: f }));
+    chrome.storage.local.get({ [PANEL_FOLDS_KEY]: {} }, v => setPanelFolds(v[PANEL_FOLDS_KEY]));
     chrome.storage.onChanged.addListener((c, area) => {
       if (c[PATHS_KEY]) applyPaths(c[PATHS_KEY].newValue);
       if (c[SORT_KEY]) applySort(c[SORT_KEY].newValue);
@@ -43,6 +48,7 @@
       if (c[OPEN_KEY]) { setFolds({}); applyOpen(c[OPEN_KEY].newValue); chrome.storage.local.remove(FOLDS_KEY); }
       // Another tab's folds — and this tab's own write, which lands as a no-op.
       if (area === 'local' && c[FOLDS_KEY]) setFolds(c[FOLDS_KEY].newValue || {});
+      if (area === 'local' && c[PANEL_FOLDS_KEY]) setPanelFolds(c[PANEL_FOLDS_KEY].newValue || {});
     });
   };
 

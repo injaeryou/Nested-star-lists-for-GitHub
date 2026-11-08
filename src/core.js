@@ -16,10 +16,11 @@
   const norm = name => parts(name).join('/');
   const fullOf = a => a.dataset[MARK + 'Full'] || nameOf(a);   // pre-shortening name
 
-  // Primer's file-directory icons: a folder says "group" faster than a triangle,
-  // and swapping closed/open carries the state without extra width.
-  const FOLDER_CLOSED = 'M1.75 1A1.75 1.75 0 0 0 0 2.75v10.5C0 14.216.784 15 1.75 15h12.5A1.75 1.75 0 0 0 16 13.25v-8.5A1.75 1.75 0 0 0 14.25 3H7.5a.25.25 0 0 1-.2-.1l-.9-1.2A1.75 1.75 0 0 0 5 1H1.75Z';
-  const FOLDER_OPEN = 'M0 2.75C0 1.784.784 1 1.75 1H5c.55 0 1.07.26 1.4.7l.9 1.2a.25.25 0 0 0 .2.1h6.75c.966 0 1.75.784 1.75 1.75v.5H0V2.75Zm0 3.5h16l-1.53 6.62A1.75 1.75 0 0 1 12.77 15H3.23a1.75 1.75 0 0 1-1.7-1.13L0 6.25Z';
+  // Folder icons: a folder says "group" faster than a triangle, and swapping
+  // closed/open carries the state without extra width. Octicons'
+  // file-directory-fill and file-directory-open-fill (MIT, see NOTICE).
+  const FOLDER_CLOSED = 'M1.75 1A1.75 1.75 0 0 0 0 2.75v10.5C0 14.216.784 15 1.75 15h12.5A1.75 1.75 0 0 0 16 13.25v-8.5A1.75 1.75 0 0 0 14.25 3H7.5a.25.25 0 0 1-.2-.1l-.9-1.2C6.07 1.26 5.55 1 5 1H1.75Z';
+  const FOLDER_OPEN = 'M.513 1.513A1.75 1.75 0 0 1 1.75 1h3.5c.55 0 1.07.26 1.4.7l.9 1.2a.25.25 0 0 0 .2.1H13a1 1 0 0 1 1 1v.5H2.75a.75.75 0 0 0 0 1.5h11.978a1 1 0 0 1 .994 1.117L15 13.25A1.75 1.75 0 0 1 13.25 15H1.75A1.75 1.75 0 0 1 0 13.25V2.75c0-.464.184-.91.513-1.237Z';
   const folderIcon = (cls, d) => {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('viewBox', '0 0 16 16');
@@ -192,7 +193,8 @@
 
   // Folders start collapsed unless the "open" setting says otherwise — and a
   // folder the reader folded by hand stays the way they left it: by path, on
-  // every surface, across pages. Only deliberate clicks are remembered; a
+  // the profile tree and the rail, across pages (the star panels keep their
+  // own, in picker.js). Only deliberate clicks are remembered; a
   // folder the rail's filter or the current list's path opened is not a choice.
   let defaultOpen = false;
   const folds = {};                 // path -> open
@@ -204,7 +206,6 @@
     // to the list being read; that path stays open no matter the default.
     for (let e = document.querySelector(`.${MARK}-current`); e; e = e.parentElement)
       if (e.tagName === 'DETAILS') e.open = true;
-    globalThis.__nsl.nestPicker?.();
   };
   const remember = changes => { Object.assign(folds, changes); saveFolds({ ...folds }); };
   const setFolds = stored => {
@@ -330,40 +331,6 @@
     }
   };
 
-  // GitHub's create/edit list dialog: its name field gets a <datalist> of the
-  // folders already in use, so "AI/" is a pick rather than a convention to
-  // remember. The browser draws the suggestions; nothing here is UI.
-  let suggesting = true;
-  const setSuggest = v => { suggesting = !!v; suggestFolders(); };
-  const suggestFolders = () => {
-    const inputs = document.querySelectorAll('input[name="user_list[name]"]');
-    if (!inputs.length) return;
-    if (!suggesting) {     // switched off: take the list back off the field
-      for (const input of inputs) if (input.hasAttribute('list')) input.removeAttribute('list');
-      document.getElementById(`${MARK}-folders`)?.remove();
-      return;
-    }
-    const paths = new Set();
-    for (const root of [container(), document.getElementById('nested-children')])
-      for (const a of root?.querySelectorAll('a[href*="/lists/"]') || []) {
-        const segs = parts(fullOf(a));
-        for (let i = 1; i < segs.length; i++)
-          if (segs.slice(0, i).every(Boolean)) paths.add(segs.slice(0, i).join('/') + '/');
-      }
-    const want = [...paths].sort((a, b) => a.localeCompare(b));
-    let list = document.getElementById(`${MARK}-folders`);
-    if (!list) {
-      list = document.createElement('datalist');
-      list.id = `${MARK}-folders`;
-      document.body.append(list);
-    }
-    // Write-guarded like everything the observer drives.
-    if ([...list.options].map(o => o.value).join('\n') !== want.join('\n'))
-      list.replaceChildren(...want.map(v => Object.assign(document.createElement('option'), { value: v })));
-    for (const input of inputs)
-      if (input.getAttribute('list') !== list.id) input.setAttribute('list', list.id);
-  };
-
   // Like GitHub's own lists box: past nine top-level entries the rest fold away
   // behind one row, until it is clicked (or the rail gets filtered).
   const TRUNCATE_AT = 9;
@@ -397,6 +364,5 @@
     folderIcon, FOLDER_CLOSED, FOLDER_OPEN, container, group, sortTree, countBadge, nest,
     setSortMode, setDefaultOpen, treeKids, expand, foldButton,
     folds, remember, setFolds, onSaveFolds,
-    suggestFolders, setSuggest,
   };
 })();

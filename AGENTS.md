@@ -59,6 +59,13 @@ the rows GitHub rendered, because those rows are not equally ours to move.
   slot and the count hang off the `<li>` instead, laid out as a flex line. One
   page can hold many panels (trending has two per repo), so the pass works one
   `<ul>` at a time, never across the page.
+- **The list dialog, in `suggest.js`.** Create/edit list asks for a name in
+  three dialogs — Catalyst on the stars tab and the feed, React on a repo page.
+  Only the placeholder ("Name this list") is common to all three. The folder
+  menu is one `popover` moved *into* the dialog: outside a modal it would be
+  inert, and the dialog's scrolling body would clip anything not in the top
+  layer. React's field takes a value only through the native setter plus an
+  `input` event.
 
 ## Layout
 
@@ -68,6 +75,7 @@ the rows GitHub rendered, because those rows are not equally ours to move.
 | `src/settings.js` | the full-path option, applied as `data-nsl-paths` on `<html>` |
 | `src/rail.js` | the list-page rail: index cache, rows, mount, filter |
 | `src/picker.js` | both star-list panels (`PANELS`): in-place tree, fold state |
+| `src/suggest.js` | folder suggestions under the list dialogs' name field |
 | `src/boot.js` | `tick()`, the observer, the test hook |
 | `styles.css` | injected by the manifest, so rows are styled before they land |
 | `options.html`/`options.js` | the popup, also the options page |
@@ -96,7 +104,7 @@ real site with the files injected the way the extension injects them:
 
 ```js
 for (const f of ['src/core.js', 'src/settings.js', 'src/rail.js', 'src/picker.js',
-                 'src/boot.js'])
+                 'src/suggest.js', 'src/boot.js'])
   await page.addInitScript({ path: f });          // same timing as document_start
 await page.goto('https://github.com/<user>?tab=stars');
 await page.addStyleTag({ path: 'styles.css' });   // the manifest does this in the extension

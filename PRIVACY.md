@@ -7,9 +7,12 @@ Nested star lists for GitHub collects nothing.
   analytics, no telemetry, and no network request to anything but
   `github.com` — and those are the same-origin requests the page itself could
   make.
-- **Settings stay yours.** The three options (sort order, folders expanded,
-  full list names) are stored with your browser's own extension-settings
-  storage (`storage.sync`), which your browser may sync between your devices.
+- **Settings stay yours.** The four options (sort order, folders expanded,
+  full list names, folder suggestions) are stored with your browser's own
+  extension-settings storage (`storage.sync`), which your browser may sync
+  between your devices.
+- **Which folders you folded** — on the stars tab and the rail, and separately
+  in the star button's panel — is kept in `storage.local`, on this device only.
   Nothing else is stored.
 - **A per-tab cache.** The parsed list index is kept in the tab's
   `sessionStorage` so the rail paints instantly; it dies with the tab.

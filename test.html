@@ -55,8 +55,6 @@
     <a class="d-block Box-row" href="/stars/me/lists/-a-"><div><h3>/a//</h3><span>1 repository</span></div></a>
   </div>
 </div>
-<!-- The name field of GitHub's create/edit list dialog (real name and id). -->
-<form hidden><input type="text" name="user_list[name]" id="user_list_name"></form>
 <!-- Decoy: a list link outside the container must be left alone. -->
 <footer><a href="/stars/other/lists/x-y"><h3>Other/decoy</h3></a></footer>
 
@@ -177,11 +175,13 @@
   .d-block { display: block !important; }
 </style>
 <!-- Fold memory outlives a run in a real browser; a test must start clean. -->
-<script>localStorage.removeItem('nestedStarList:foldState');</script>
+<script>localStorage.removeItem('nestedStarList:foldState');
+localStorage.removeItem('nestedStarList:panelFoldState');</script>
 <script src="./src/core.js"></script>
 <script src="./src/settings.js"></script>
 <script src="./src/rail.js"></script>
 <script src="./src/picker.js"></script>
+<script src="./src/suggest.js"></script>
 <script src="./src/boot.js"></script>
 <script>
 const fails = [];
@@ -297,19 +297,56 @@ setTimeout(() => {
     order(box).startsWith('AI,Infra:k8s,Infra,'));
   api.setSortMode('name');
 
-  // The list dialog's name field offers every folder in use, from the box and
-  // the rail alike, once — and a re-run leaves the list alone.
-  api.suggestFolders();
-  const nameField = document.getElementById('user_list_name');
-  const suggested = () => [...(nameField.list?.options || [])].map(o => o.value).join(',');
-  check('the name field suggests the folders in use', suggested() === 'AI/,AI/RAG/,Infra/,Infra/aws/');
-  const firstOption = nameField.list.options[0];
-  api.suggestFolders();
-  check('a suggestion re-run rewrites nothing', nameField.list.options[0] === firstOption);
-  api.setSuggest(false);
-  check('switching suggestions off takes the list off the field', !nameField.hasAttribute('list'));
-  api.setSuggest(true);
-  check('and on again puts it back', suggested() === 'AI/,AI/RAG/,Infra/,Infra/aws/');
+  // The list dialog's name field offers the folders in use — from the star
+  // panels on the page, which hold the reader's own lists — in a menu of ours.
+  // Each dialog flavour is found: Catalyst by name, React by its placeholder.
+  for (const attrs of ['name="user_list[name]"', 'placeholder="⭐️ Name this list"']) {
+    const dlg = document.createElement('div');
+    dlg.setAttribute('role', 'dialog');
+    dlg.innerHTML = `<form><input type="text" ${attrs}></form>`;
+    document.body.append(dlg);
+    const nf = dlg.querySelector('input');
+    const menu = () => document.getElementById('nestedStarList-folders');
+    const offered = () => menu()?.matches(':popover-open')
+      ? [...menu().children].map(li => li.textContent).join(',') : '';
+    const key = k => { const e = new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true });
+                       nf.dispatchEvent(e); return e.defaultPrevented; };
+    const type = v => { nf.value = v; nf.dispatchEvent(new Event('input', { bubbles: true })); };
+    nf.focus();
+    check(`the name field offers the folders in use (${attrs})`,
+      offered() === 'Infra/,Infra/aws/,test/,testtest/,testtest/sub1/' && dlg.contains(menu()));
+    check('the field is announced as a combobox over the menu',
+      nf.getAttribute('role') === 'combobox' && nf.getAttribute('aria-controls') === menu().id);
+    check('the menu sits under the field',
+      Math.abs(menu().getBoundingClientRect().top - nf.getBoundingClientRect().bottom - 4) <= 1);
+    type('test');
+    check('typing narrows the folders', offered() === 'test/,testtest/,testtest/sub1/');
+    check('down picks a row, and the field says which', key('ArrowDown') &&
+      nf.getAttribute('aria-activedescendant') === menu().children[0].id);
+    let submitted = 0;
+    dlg.querySelector('form').addEventListener('submit', e => { submitted++; e.preventDefault(); });
+    check('enter takes the row without submitting', key('Enter') && nf.value === 'test/' && submitted === 0);
+    check('and the menu goes one level down', offered() === '');
+    type('testtest');
+    menu().children[0].dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    menu().children[0].click();
+    check('a click takes a row too', nf.value === 'testtest/' && offered() === 'testtest/sub1/');
+    check('escape closes the menu, not the dialog', key('Escape') && offered() === '' &&
+      nf.getAttribute('aria-expanded') === 'false');
+    check('a closed menu leaves enter to the form', !key('Enter'));
+    type('t');
+    const ime = new KeyboardEvent('keydown', { key: 'Enter', isComposing: true, bubbles: true, cancelable: true });
+    nf.dispatchEvent(ime);
+    check('enter that ends an IME composition is left alone', !ime.defaultPrevented && nf.value === 't');
+    type('');
+    api.setSuggest(false);
+    nf.blur(); nf.focus();
+    check('switching suggestions off keeps the menu shut', offered() === '');
+    api.setSuggest(true);
+    nf.blur();
+    check('leaving the field closes the menu', offered() === '');
+    dlg.remove();
+  }
 
   // "AI/RAG" sits between "AI" and "AI/RAG/eval", so it must become a group of
   // its own inside AI, with the real list as its header.
@@ -895,6 +932,64 @@ setTimeout(() => {
   p2li(3).querySelector('.nestedStarList-caret')
     .dispatchEvent(new MouseEvent('click', { bubbles: true }));
   check('and opening it opens both', shown(p2li(4)) && shown(pick(4)));
+  // But not with the profile tree behind the panel: folding that one moves the
+  // page, and the open panel jumps with it.
+  const tree = () => [...document.querySelectorAll('details[data-nested-star-list-parent]')]
+    .map(d => d.open).join();
+  const treeWas = tree(), storedWas = localStorage.getItem('nestedStarList:foldState');
+  pcaret(pfold('Infra/aws')).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  check('a panel fold leaves the profile tree and its memory alone',
+    !shown(pick(7)) && tree() === treeWas &&
+    localStorage.getItem('nestedStarList:foldState') === storedWas);
+  // The panel remembers its own folds, under a key of its own.
+  const panelFolds = () => JSON.parse(localStorage.getItem('nestedStarList:panelFoldState') || '{}');
+  check('a panel fold is remembered', panelFolds()['Infra/aws'] === false);
+  // A fold stored by another page (or tab) applies to the panels already open.
+  api.setPanelFolds({ testtest: false });
+  check('stored panel folds apply to the panels on the page',
+    !shown(pick(4)) && !shown(p2li(4)) && shown(pick(7)));
+  api.setPanelFolds({ 'Infra/aws': false });   // as it was: the next click reopens it
+  pcaret(pfold('Infra/aws')).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  // A folder row folds from its body too; its checkbox still ticks the list.
+  const click = (el, detail = 1) => el.dispatchEvent(new MouseEvent('click', { bubbles: true, detail }));
+  let ticked = 0;
+  p2.addEventListener('click', () => ticked++);
+  click(p2li(3).querySelector('.ActionListItem-label'));
+  check('clicking a folder row by its name folds it, and ticks nothing',
+    !shown(p2li(4)) && ticked === 0);
+  click(p2li(3).querySelector('.ActionListItem-label'));
+  check('and clicking it again unfolds it', shown(p2li(4)));
+  click(p2li(3).querySelector('.FormControl-checkbox'));
+  check("a folder row's checkbox ticks instead of folding", shown(p2li(4)) && ticked === 1);
+  // The panel moves focus and the active row on the press, before the click.
+  const press = el => ['pointerdown', 'mousedown'].map(t => {
+    const ev = new MouseEvent(t, { bubbles: true, cancelable: true, detail: 1 });
+    el.dispatchEvent(ev);
+    return ev.defaultPrevented;
+  }).join();
+  check("a press on a folder row's checkbox reaches the panel",
+    press(p2li(3).querySelector('.FormControl-checkbox')) === 'false,false');
+  check('a press on its body does not', press(p2li(3).querySelector('.ActionListItem-label')) === 'true,true');
+  click(p2li(3).querySelector('button'), 0);      // Enter on a focused row
+  check('a keyboard click on a folder row still selects it', shown(p2li(4)) && ticked === 2);
+  click(pick(3).querySelector('[data-component="ActionList.Item.Label"]'));
+  check('the React panel folds from the row body too', !shown(pick(4)));
+  click(pick(3).querySelector('[data-component="ActionList.Item.Label"]'));
+  click(pfold('Infra').querySelector('.nestedStarList-picklabel'));
+  check('a folder-only row folds from its name', !shown(pfold('Infra/aws')));
+  click(pfold('Infra').querySelector('.nestedStarList-picklabel'));
+  check('and unfolds from it', shown(pfold('Infra/aws')) && shown(pick(4)));
+  // The Catalyst panel's first frame is placed before it has a width; it stays
+  // hidden until the panel says it is ready.
+  const sp = document.createElement('select-panel');
+  sp.innerHTML = '<dialog open></dialog>';
+  document.body.append(sp);
+  const spd = sp.firstChild;
+  check('an opening star panel is hidden until it is placed',
+    getComputedStyle(spd).visibility === 'hidden');
+  spd.setAttribute('data-ready', 'true');
+  check('and shows once it is', getComputedStyle(spd).visibility === 'visible');
+  sp.remove();
 
   // A trending page carries a panel per repo. Each is its own tree, and none
   // may reach into another.
