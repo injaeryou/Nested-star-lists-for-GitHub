@@ -1,0 +1,285 @@
+name: Release
+
+# One button: bump manifest.json, tag, publish a GitHub release with generated
+# notes and the store zip, then submit that zip to each store. Keys are
+# secrets; the IDs that are not secret (CHROME_PUBLISHER_ID, CHROME_EXTENSION_ID,
+# EDGE_PRODUCT_ID) are repository variables. A store with none of its settings
+# is skipped with a notice; one with only some set fails.
+# A store job that fails can be retried alone with "Re-run failed jobs"; a run
+# that pushed the tag but never made the release picks up from the tag when it
+# is run again with the same version.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'New version, e.g. 0.3.0 (no leading v)'
+        required: true
+
+permissions:
+  contents: read
+
+concurrency: release
+
+# bash, not the default `bash -e`: with pipefail a failed curl cannot hide
+# behind the jq it pipes into.
+defaults:
+  run:
+    shell: bash
+
+env:
+  VERSION: ${{ inputs.version }}
+  # Not ZIP: Info-ZIP reads $ZIP as its own default options.
+  ASSET: nested-star-lists-for-github-v${{ inputs.version }}.zip
+  GH_REPO: ${{ github.repository }}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - id: check
+        name: Check the version
+        run: |
+          if ! printf '%s' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::'$VERSION' is not X.Y.Z"; exit 1
+          fi
+          git fetch --tags --quiet
+          if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then
+            if OUT=$(gh release view "v$VERSION" 2>&1); then
+              echo "::error::v$VERSION is already released"; exit 1
+            elif [[ "$OUT" != *'release not found'* ]]; then
+              echo "::error::could not look up release v$VERSION: $OUT"; exit 1
+            fi
+            TAGGED=$(git show "v$VERSION:manifest.json" | sed -n 's/^  "version": "\(.*\)",$/\1/p')
+            if [ "$TAGGED" != "$VERSION" ]; then
+              echo "::error::tag v$VERSION exists, but its manifest says '$TAGGED'"; exit 1
+            fi
+            echo "::notice::tag v$VERSION exists without a release; picking up from it"
+            echo 'resume=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          CURRENT=$(sed -n 's/^  "version": "\(.*\)",$/\1/p' manifest.json)
+          if [ -z "$CURRENT" ]; then
+            echo "::error::no version line found in manifest.json"; exit 1
+          fi
+          HIGHEST=$(printf '%s\n%s\n' "$CURRENT" "$VERSION" | sort -V | tail -1)
+          if [ "$VERSION" = "$CURRENT" ] || [ "$HIGHEST" != "$VERSION" ]; then
+            echo "::error::$VERSION is not above the current $CURRENT"; exit 1
+          fi
+
+      # --atomic: main and the tag land together or not at all, so a tag can
+      # never point at a commit main does not have.
+      - name: Bump, commit, tag
+        if: steps.check.outputs.resume != 'true'
+        run: |
+          sed -i "s/^  \"version\": \".*\",\$/  \"version\": \"$VERSION\",/" manifest.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -am "chore: bump the version to $VERSION"
+          git tag "v$VERSION"
+          git push --atomic origin main "v$VERSION"
+
+      - name: Build the zip and publish the release
+        run: |
+          git checkout --quiet "v$VERSION"
+          sh package.sh
+          mv nested-star-lists-for-github.zip "$ASSET"
+          gh release create "v$VERSION" --title "v$VERSION" --generate-notes "$ASSET"
+
+  chrome:
+    needs: release
+    runs-on: ubuntu-latest
+    env:
+      CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
+      CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
+      CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+      CHROME_PUBLISHER_ID: ${{ vars.CHROME_PUBLISHER_ID }}
+      CHROME_EXTENSION_ID: ${{ vars.CHROME_EXTENSION_ID }}
+    steps:
+      - id: keys
+        name: Check the secrets
+        run: |
+          names='CHROME_CLIENT_ID CHROME_CLIENT_SECRET CHROME_REFRESH_TOKEN CHROME_PUBLISHER_ID CHROME_EXTENSION_ID'
+          set=''; unset_=''
+          for n in $names; do if [ -n "${!n}" ]; then set="$set $n"; else unset_="$unset_ $n"; fi; done
+          if [ -z "$set" ]; then
+            echo "::notice::Chrome Web Store skipped: no CHROME_* secrets or variables are set"
+            echo '- Chrome Web Store: skipped, no `CHROME_*` secrets or variables' >> "$GITHUB_STEP_SUMMARY"
+            echo 'ready=false' >> "$GITHUB_OUTPUT"
+          elif [ -n "$unset_" ]; then
+            echo "::error::Chrome Web Store secrets/variables missing:$unset_"; exit 1
+          else
+            echo 'ready=true' >> "$GITHUB_OUTPUT"
+          fi
+
+      # The only step that holds a GitHub token in this job.
+      - name: Fetch the zip and the release notes
+        if: steps.keys.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "v$VERSION" --pattern "$ASSET"
+          gh release view "v$VERSION" --json body --jq .body > notes.md
+
+      - name: Upload and submit for review
+        if: steps.keys.outputs.ready == 'true'
+        run: |
+          # A failed request stops the job with the server's own answer.
+          call() {
+            RES=$(curl -sS --fail-with-body "$@") || { echo "::error::$RES"; exit 1; }
+          }
+          call https://oauth2.googleapis.com/token \
+            --data-urlencode "client_id=$CHROME_CLIENT_ID" \
+            --data-urlencode "client_secret=$CHROME_CLIENT_SECRET" \
+            --data-urlencode "refresh_token=$CHROME_REFRESH_TOKEN" \
+            --data-urlencode 'grant_type=refresh_token'
+          TOKEN=$(jq -r .access_token <<<"$RES")
+          echo "::add-mask::$TOKEN"
+          API=https://chromewebstore.googleapis.com
+          ITEM="publishers/$CHROME_PUBLISHER_ID/items/$CHROME_EXTENSION_ID"
+          AUTH="Authorization: Bearer $TOKEN"
+
+          call -H "$AUTH" -X POST -T "$ASSET" "$API/upload/v2/$ITEM:upload"
+          echo "$RES"
+          STATE=$(jq -r .uploadState <<<"$RES")
+          for _ in $(seq 30); do
+            case "$STATE" in IN_PROGRESS|UPLOAD_IN_PROGRESS) ;; *) break ;; esac
+            sleep 10
+            call -H "$AUTH" "$API/v2/$ITEM:fetchStatus"
+            echo "$RES"
+            STATE=$(jq -r .lastAsyncUploadState <<<"$RES")
+          done
+          if [ "$STATE" != SUCCEEDED ]; then
+            echo "::error::Chrome Web Store upload ended in $STATE"; exit 1
+          fi
+
+          call -H "$AUTH" -X POST -H 'Content-Type: application/json' -d '{}' "$API/v2/$ITEM:publish"
+          echo "$RES"
+          STATE=$(jq -r .state <<<"$RES")
+          case "$STATE" in
+            PENDING_REVIEW|STAGED|PUBLISHED|PUBLISHED_TO_TESTERS) echo "Chrome Web Store: $STATE" ;;
+            *) echo "::error::Chrome Web Store publish ended in $STATE"; exit 1 ;;
+          esac
+
+  firefox:
+    needs: release
+    runs-on: ubuntu-latest
+    env:
+      WEB_EXT_API_KEY: ${{ secrets.FIREFOX_API_KEY }}
+      WEB_EXT_API_SECRET: ${{ secrets.FIREFOX_API_SECRET }}
+    steps:
+      - id: keys
+        name: Check the secrets
+        run: |
+          if [ -z "$WEB_EXT_API_KEY" ] && [ -z "$WEB_EXT_API_SECRET" ]; then
+            echo "::notice::Firefox Add-ons skipped: no FIREFOX_* secrets are set"
+            echo '- Firefox Add-ons: skipped, no `FIREFOX_*` secrets' >> "$GITHUB_STEP_SUMMARY"
+            echo 'ready=false' >> "$GITHUB_OUTPUT"
+          elif [ -z "$WEB_EXT_API_KEY" ] || [ -z "$WEB_EXT_API_SECRET" ]; then
+            echo '::error::Firefox Add-ons needs both FIREFOX_API_KEY and FIREFOX_API_SECRET'; exit 1
+          else
+            echo 'ready=true' >> "$GITHUB_OUTPUT"
+          fi
+
+      # The only step that holds a GitHub token in this job.
+      - name: Fetch the zip and the release notes
+        if: steps.keys.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "v$VERSION" --pattern "$ASSET"
+          gh release view "v$VERSION" --json body --jq .body > notes.md
+
+      - uses: actions/setup-node@v4
+        if: steps.keys.outputs.ready == 'true'
+        with:
+          node-version: 22
+
+      # The release notes go along as this version's notes on AMO. Listed
+      # versions are reviewed by Mozilla; there is nothing to wait for here.
+      - name: Submit for review
+        if: steps.keys.outputs.ready == 'true'
+        run: |
+          mkdir ext && unzip -q "$ASSET" -d ext
+          jq -n --rawfile n notes.md '{version: {release_notes: {"en-US": $n}}}' > amo.json
+          npx --yes web-ext@10.8.0 sign --source-dir ext --artifacts-dir out \
+            --channel listed --approval-timeout 0 --amo-metadata amo.json
+
+  edge:
+    needs: release
+    runs-on: ubuntu-latest
+    env:
+      EDGE_CLIENT_ID: ${{ secrets.EDGE_CLIENT_ID }}
+      EDGE_API_KEY: ${{ secrets.EDGE_API_KEY }}
+      EDGE_PRODUCT_ID: ${{ vars.EDGE_PRODUCT_ID }}
+    steps:
+      - id: keys
+        name: Check the secrets
+        run: |
+          names='EDGE_CLIENT_ID EDGE_API_KEY EDGE_PRODUCT_ID'
+          set=''; unset_=''
+          for n in $names; do if [ -n "${!n}" ]; then set="$set $n"; else unset_="$unset_ $n"; fi; done
+          if [ -z "$set" ]; then
+            echo "::notice::Edge Add-ons skipped: no EDGE_* secrets or variables are set"
+            echo '- Edge Add-ons: skipped, no `EDGE_*` secrets or variables' >> "$GITHUB_STEP_SUMMARY"
+            echo 'ready=false' >> "$GITHUB_OUTPUT"
+          elif [ -n "$unset_" ]; then
+            echo "::error::Edge Add-ons secrets/variables missing:$unset_"; exit 1
+          else
+            echo 'ready=true' >> "$GITHUB_OUTPUT"
+          fi
+
+      # Edge answers each request with an operation to poll. The notes on the
+      # submission are for Microsoft's certification team, not for users.
+      # The only step that holds a GitHub token in this job.
+      - name: Fetch the zip and the release notes
+        if: steps.keys.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "v$VERSION" --pattern "$ASSET"
+          gh release view "v$VERSION" --json body --jq .body > notes.md
+
+      - name: Upload and submit for certification
+        if: steps.keys.outputs.ready == 'true'
+        run: |
+          BASE="https://api.addons.microsoftedge.microsoft.com/v1/products/$EDGE_PRODUCT_ID"
+          AUTH=(-H "Authorization: ApiKey $EDGE_API_KEY" -H "X-ClientID: $EDGE_CLIENT_ID")
+
+          # POST; a 202 carries the operation to poll in its Location header.
+          operation() {
+            local what=$1; shift
+            CODE=$(curl -sS -D headers.txt -o body.txt -w '%{http_code}' "${AUTH[@]}" -X POST "$@")
+            if [ "$CODE" != 202 ]; then
+              echo "::error::Edge Add-ons $what answered $CODE: $(cat body.txt)"; exit 1
+            fi
+            OP=$(tr -d '\r' < headers.txt | awk 'tolower($1) == "location:" { print $2 }' | sed 's#.*/##')
+            [ -n "$OP" ] || { echo "::error::Edge Add-ons $what returned no operation"; exit 1; }
+          }
+          # Poll an operation until it leaves InProgress.
+          wait_for() {
+            for _ in $(seq 30); do
+              RES=$(curl -sS --fail-with-body "${AUTH[@]}" "$1") || { echo "::error::$RES"; exit 1; }
+              echo "$RES"
+              STATUS=$(jq -r .status <<<"$RES")
+              [ "$STATUS" != InProgress ] && break
+              sleep 10
+            done
+            if [ "$STATUS" != Succeeded ]; then
+              echo "::error::Edge Add-ons $2 ended in $STATUS"; exit 1
+            fi
+          }
+
+          operation upload -H 'Content-Type: application/zip' -T "$ASSET" "$BASE/submissions/draft/package"
+          wait_for "$BASE/submissions/draft/package/operations/$OP" upload
+
+          operation publish -H 'Content-Type: application/json' \
+            -d "$(jq -n --rawfile n notes.md '{notes: $n}')" "$BASE/submissions"
+          wait_for "$BASE/submissions/operations/$OP" publish
